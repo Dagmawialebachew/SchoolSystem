@@ -1,0 +1,13 @@
+{
+  "name": "schoolsystem",
+  "version": "1.0.0",
+  "description": "Django School Management System",
+  "scripts": {
+    "build": "tailwindcss -i assets/tailwind.css -o static/css/app.css --minify",
+    "watch": "tailwindcss -i assets/tailwind.css -o static/css/app.css --watch",
+    "dev": "npm run watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

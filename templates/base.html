@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SchoolSystem{% endblock %}</title>
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="h-full bg-gray-50 font-poppins">
+    <div class="min-h-full">
+        {% if user.is_authenticated %}
+            {% include 'partials/navbar.html' %}
+            
+            <div class="flex">
+                {% include 'partials/sidebar.html' %}
+                
+                <main class="flex-1 p-6">
+                    {% include 'partials/flash.html' %}
+                    {% block content %}
+                    {% endblock %}
+                </main>
+            </div>
+        {% else %}
+            <main class="min-h-screen flex items-center justify-center">
+                {% include 'partials/flash.html' %}
+                {% block content %}
+                {% endblock %}
+            </main>
+        {% endif %}
+    </div>
+</body>
+</html>

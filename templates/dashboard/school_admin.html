@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}School Admin Dashboard - SchoolSystem{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-6">
+        <h1 class="text-3xl font-montserrat font-semibold text-gray-900">School Admin Dashboard</h1>
+        <p class="text-gray-600">Welcome back, {{ user.get_full_name|default:user.username }}!</p>
+    </div>
+    
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="card">
+            <h3 class="text-lg font-medium text-gray-900">Total Students</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ total_students }}</p>
+        </div>
+        
+        <div class="card">
+            <h3 class="text-lg font-medium text-gray-900">Total Teachers</h3>
+            <p class="text-3xl font-bold text-green-600">{{ total_teachers }}</p>
+        </div>
+        
+        <div class="card">
+            <h3 class="text-lg font-medium text-gray-900">Total Classes</h3>
+            <p class="text-3xl font-bold text-purple-600">{{ total_classes }}</p>
+        </div>
+        
+        <div class="card">
+            <h3 class="text-lg font-medium text-gray-900">Fees Due This Month</h3>
+            <p class="text-3xl font-bold text-red-600">${{ fees_due_this_month|floatformat:2 }}</p>
+        </div>
+    </div>
+    
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="card">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Fees by Status</h3>
+            <canvas id="feesStatusChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="card">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Students by Class</h3>
+            <canvas id="studentsByClassChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Monthly Collections</h3>
+        <canvas id="monthlyCollectionsChart" width="800" height="300"></canvas>
+    </div>
+</div>
+
+<script src="{% static 'js/chart.min.js' %}"></script>
+<script>
+// Fees Status Donut Chart
+fetch('{% url "dashboard:fees_status_chart" %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('feesStatusChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.data,
+                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    });
+
+// Students by Class Bar Chart
+fetch('{% url "dashboard:students_by_class_chart" %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('studentsByClassChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Students',
+                    data: data.data,
+                    backgroundColor: '#3B82F6',
+                    borderColor: '#1D4ED8',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+
+// Monthly Collections Line Chart
+fetch('{% url "dashboard:monthly_collections_chart" %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('monthlyCollectionsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Collections ($)',
+                    data: data.data,
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

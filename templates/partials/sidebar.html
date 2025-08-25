@@ -1,0 +1,70 @@
+<aside class="w-64 bg-white shadow-sm h-full">
+    <nav class="mt-4 px-4">
+        <ul class="space-y-2">
+            <li>
+                <a href="{% url 'dashboard:dashboard' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-50">
+                    Dashboard
+                </a>
+            </li>
+            
+            {% if user.is_super_admin or user.is_school_admin %}
+            <li>
+                <a href="{% url 'schools:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Schools
+                </a>
+            </li>
+            {% endif %}
+            
+            <li>
+                <a href="{% url 'students:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Students
+                </a>
+            </li>
+            
+            <li>
+                <a href="{% url 'teachers:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Teachers
+                </a>
+            </li>
+            
+            <li>
+                <a href="{% url 'classes_app:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Classes
+                </a>
+            </li>
+            
+            <li>
+                <a href="{% url 'attendance:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Attendance
+                </a>
+            </li>
+            
+            <li>
+                <a href="{% url 'fees:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Fees
+                </a>
+            </li>
+            
+            <li>
+                <a href="{% url 'documents:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Documents
+                </a>
+            </li>
+            
+            <li>
+                <a href="{% url 'notifications:list' %}" 
+                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+                    Notifications
+                </a>
+            </li>
+        </ul>
+    </nav>
+</aside>
