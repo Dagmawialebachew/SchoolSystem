@@ -1,14 +1,15 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from a .env file if present
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = True
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+print('allowed hosts:', ALLOWED_HOSTS)
 # Security headers
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
