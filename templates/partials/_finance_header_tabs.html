@@ -1,0 +1,88 @@
+<!-- fees/partials/_finance_header_tabs.html -->
+<div class="p-6 md:p-10 bg-neutral-50 min-h-screen font-poppins">
+<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-bold text-neutral-900">{{ title }}</h1>
+    <p class="text-neutral-500 mt-1">{{ subtitle }}</p>
+  </div>
+  <div class="flex flex-row items-center gap-4">
+  {% if add_url %}
+  <a href="{{ add_url }}" 
+     class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md transition">
+    {{ add_button_text }}
+  </a>
+  {% endif %}
+  {% if generate_url %}
+  <form action="{% url 'fees:invoice_generate' %}" method="post" class="inline">
+  {% csrf_token %}
+  <button type="submit" 
+          class="px-5 py-2.5 bg-secondary-400 hover:bg-primary-700 text-white rounded-xl shadow-md transition">
+       📄 Generate Invoices
+  </button>
+</form>
+{% endif %}
+{% if payment_detail_url %}
+<a href="{{payment_detail_url}}" 
+     class="px-5 py-2.5 bg-warning-200 hover:bg-warning-300 text-black rounded-xl shadow-md transition">
+    See payment details
+  </a>
+  {% endif %}
+{% if invoice_detail_url %}
+<a href="{{invoice_detail_url}}" 
+     class="px-5 py-2.5 bg-warning-200 hover:bg-warning-300 text-black rounded-xl shadow-md transition">
+    See invoices
+  </a>
+  {% endif %}
+  {% if export %}
+   <a href="{% url 'fees:export_student_invoices_pdf' student.id %}" 
+       class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition text-sm font-semibold">
+       Export PDF
+    </a>
+    <a href="{% url 'fees:export_student_invoices_excel' student.id %}" 
+       class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition text-sm font-semibold">
+       Export Excel
+    </a>
+  {% endif %}
+  {% if export_all %}
+  <form method="get" action="{% url 'fees:export_payments' %}" class="flex gap-3">
+  {% csrf_token %}
+  <button 
+    type="submit" 
+    name="export_type" 
+    value="pdf_all"
+    class="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition text-sm font-semibold">
+   Export All PDF
+  </button>
+  
+  <button 
+    type="submit" 
+    name="export_type" 
+    value="excel_all"
+    class="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-md transition text-sm font-semibold">
+   Export All Excel
+  </button>
+</form>
+  {% endif %}
+</div>
+</div>
+
+<div class="mb-6 border-b border-neutral-200">
+  <nav class="flex space-x-6" aria-label="Tabs">
+    <a href="{% url 'fees:fee-dashboard' %}" 
+       class="{% if active_tab == 'dashboard' %}text-primary-600 font-medium border-b-2 border-primary-600{% else %}text-neutral-500 hover:text-primary-600{% endif %} py-2">
+      Overview
+    </a>
+    <a href="{% url 'fees:invoices_list' %}" 
+       class="{% if active_tab == 'invoices' %}text-primary-600 font-medium border-b-2 border-primary-600{% else %}text-neutral-500 hover:text-primary-600{% endif %} py-2">
+      Invoices
+    </a>
+    <a href="{% url 'fees:payments_list' %}" 
+       class="{% if active_tab == 'payments' %}text-primary-600 font-medium border-b-2 border-primary-600{% else %}text-neutral-500 hover:text-primary-600{% endif %} py-2">
+      Payments
+    </a>
+    <a href="{% url 'fees:fees_list' %}" 
+       class="{% if active_tab == 'fees' %}text-primary-600 font-medium border-b-2 border-primary-600{% else %}text-neutral-500 hover:text-primary-600{% endif %} py-2">
+      Fee Setup
+    </a>
+  </nav>
+</div>

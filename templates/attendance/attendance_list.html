@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-xl font-bold mb-4">Attendance Records</h1>
+
+<table class="min-w-full border border-gray-200">
+  <thead>
+    <tr class="bg-gray-100">
+      <th class="px-4 py-2">Student</th>
+      <th class="px-4 py-2">Date</th>
+      <th class="px-4 py-2">Status</th>
+      <th class="px-4 py-2">Marked By</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in object_list %}
+      <tr class="border-b">
+        <td class="px-4 py-2">{{ record.student }}</td>
+        <td class="px-4 py-2">{{ record.date }}</td>
+        <td class="px-4 py-2">{{ record.status }}</td>
+        <td class="px-4 py-2">{{ record.marked_by }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4" class="text-center p-4">No attendance records found.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

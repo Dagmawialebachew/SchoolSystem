@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow-md rounded-2xl p-8 mt-10">
+    <!-- Header -->
+    <h1 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+        <i class="fas fa-chalkboard-teacher text-primary-600"></i>
+        {% if form.instance.pk %} Edit Class {% else %} Create Class {% endif %}
+    </h1>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6 grid md:gap-6 md:grid-cols-2 grid-cols-1">
+        {% csrf_token %}
+
+        <!-- Render each field manually for Tailwind control -->
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                    <p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <!-- Buttons -->
+        <div class="flex space-x-3 pt-4">
+            <button type="submit"
+                class="px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+                <i class="fas fa-save mr-1"></i> Save
+            </button>
+            <a href="{% url 'classes_app:list' %}"
+               class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200 transition">
+                <i class="fas fa-times mr-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

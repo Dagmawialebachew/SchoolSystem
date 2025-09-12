@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Approval{% endblock %}
+
+{% block alt_content %}
+<div class="max-w-md mx-auto text-center mt-20 bg-white shadow-lg rounded-xl p-8">
+  <h2 class="text-2xl font-bold text-primary-600 mb-4">Registration Successful 🎉</h2>
+  <p class="text-neutral-600">
+    Your account is awaiting <strong>Super Admin</strong> approval.
+    You’ll be able to log in once it’s verified.
+  </p>
+  <p>
+    If you have any questions, please contact support at +251960306801.
+  </p>
+  <a href="{% url 'accounts:login' %}" class="text-primary-600 hover:underline">Return to Login</a>
+</div>
+{% endblock %}

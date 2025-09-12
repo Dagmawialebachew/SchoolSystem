@@ -4,7 +4,7 @@ from .models import Announcement
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ('content', 'target', 'school', 'created_at')
-    list_filter = ('school', 'target', 'created_at')
-    search_fields = ('content',)
+    list_display = ('title', 'school', 'message', 'created_at')
+    list_filter = ('school', 'created_at')
+    search_fields = ('title', 'school__name')
     date_hierarchy = 'created_at'

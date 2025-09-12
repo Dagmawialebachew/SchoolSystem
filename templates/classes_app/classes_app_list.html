@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Classes - SchoolSystem{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">
+        <i class="fas fa-chalkboard-teacher text-primary-600"></i> Classes
+    </h1>
+    <a href="{% url 'classes_app:create' %}" 
+       class="px-4 py-2 bg-primary-600 text-white rounded-lg shadow hover:bg-primary-700 transition flex items-center space-x-2">
+       <i class="fas fa-plus"></i>
+       <span>Add Class</span>
+    </a>
+</div>
+
+<!-- Search -->
+<form method="get" class="mb-4">
+    <div class="flex">
+        <input type="text" name="search" placeholder="Search by class name"
+               value="{{ request.GET.search }}"
+               class="w-full p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="submit" 
+                class="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition">
+            Search
+        </button>
+    </div>
+</form>
+
+<!-- Table -->
+<div class="overflow-hidden text-sm bg-white shadow-sm rounded-2xl border border-gray-100">
+    <table class="min-w-full">
+        <!-- Header -->
+        <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Class Name</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Teacher</th>
+                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+            </tr>
+        </thead>
+
+        <!-- Body -->
+        <tbody class="divide-y divide-gray-100">
+            {% for class_program in classes %}
+            <tr class="hover:bg-gray-50 transition">
+                <!-- Counter -->
+                <td class="px-6 py-4 text-sm text-gray-500">{{ forloop.counter }}</td>
+
+                <!-- Class Name -->
+                <td class="px-6 py-4">
+                    <div class="font-medium text-gray-900">{{ class_program.name }}</div>
+                </td>
+
+                <!-- Subject -->
+                <td class="px-6 py-4 text-sm text-gray-700">{{ class_program.subject }}</td>
+
+                <!-- Teacher -->
+                <td class="px-6 py-4 text-sm text-gray-700">
+                    {{ class_program.teacher.first_name }} {{ class_program.teacher.last_name }}
+                </td>
+
+                <!-- Actions -->
+                <td class="px-6 py-4 text-right text-sm font-medium space-x-2 flex flex-row gap-2 justify-end">
+                    <a href="{% url 'classes_app:detail' class_program.pk %}" 
+                       class="inline-flex items-center px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition">
+                        <i class="fas fa-eye mr-1"></i> View
+                    </a>
+                    <a href="{% url 'classes_app:update' class_program.pk %}" 
+                       class="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </a>
+                    <a href="{% url 'classes_app:delete' class_program.pk %}" 
+                       class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+                       onclick="return confirm('Are you sure you want to delete this class?');">
+                        <i class="fas fa-trash-alt mr-1"></i> Delete
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i> No classes found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex justify-between items-center mt-6 px-6 pb-4">
+        <div class="text-sm text-gray-600">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </div>
+        <div class="space-x-2">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
+                   class="px-3 py-1 border rounded hover:bg-gray-100">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
+                   class="px-3 py-1 border rounded hover:bg-gray-100">Prev</a>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
+                   class="px-3 py-1 border rounded hover:bg-gray-100">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}"
+                   class="px-3 py-1 border rounded hover:bg-gray-100">Last</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

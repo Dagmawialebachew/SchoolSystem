@@ -1,9 +1,60 @@
 {% if messages %}
-<div class="fixed top-4 right-4 z-50 space-y-2">
+<div id="flash-messages" class="fixed top-6 right-6 z-50 flex flex-col space-y-3">
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} bg-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-100 border border-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-400 text-{% if message.tags == 'error' %}red{% elif message.tags == 'warning' %}yellow{% elif message.tags == 'success' %}green{% else %}blue{% endif %}-700 px-4 py-3 rounded max-w-sm">
-        {{ message }}
+    <div
+        class="flex items-start max-w-sm w-full p-4 rounded-2xl shadow-lg border-l-4
+               bg-white animate-slide-in-right transition-all duration-500
+               {% if message.tags == 'success' %} border-success-500 text-success-700
+               {% elif message.tags == 'error' %} border-danger-500 text-danger-700
+               {% elif message.tags == 'warning' %} border-warning-500 text-warning-700
+               {% else %} border-primary-500 text-primary-700 {% endif %}">
+        
+        <!-- Icon -->
+        <div class="flex-shrink-0 mt-0.5">
+            {% if message.tags == 'success' %}
+                <i class="fas fa-check-circle text-success-500 text-xl"></i>
+            {% elif message.tags == 'error' %}
+                <i class="fas fa-times-circle text-danger-500 text-xl"></i>
+            {% elif message.tags == 'warning' %}
+                <i class="fas fa-exclamation-triangle text-warning-500 text-xl"></i>
+            {% else %}
+                <i class="fas fa-info-circle text-primary-500 text-xl"></i>
+            {% endif %}
+        </div>
+
+        <!-- Message text -->
+        <div class="ml-3 text-sm font-poppins leading-snug">
+            {{ message|safe }}
+        </div>
+
+        <!-- Dismiss button -->
+        <button 
+            class="ml-auto text-neutral-400 hover:text-neutral-600 transition"
+            onclick="this.parentElement.classList.add('opacity-0','translate-x-20'); 
+                     setTimeout(()=>this.parentElement.remove(), 300)">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
     {% endfor %}
 </div>
 {% endif %}
+
+<style>
+@keyframes slide-in-right {
+  0% { opacity: 0; transform: translateX(120%); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s ease-out;
+}
+</style>
+
+<script>
+  // Auto-dismiss each toast after 5s (staggered a bit so they don’t all vanish together)
+  document.querySelectorAll("#flash-messages > div").forEach((el, i) => {
+    setTimeout(() => {
+      el.classList.add("opacity-0","translate-x-20");
+      setTimeout(()=>el.remove(), 300);
+    }, 5000 + (i * 800));
+  });
+</script>

@@ -1,6 +1,6 @@
 from django.utils.deprecation import MiddlewareMixin
 
-
+print('this is runnign just one ')
 class SchoolTenancyMiddleware(MiddlewareMixin):
     """Middleware to attach current user to request and handle school filtering"""
     

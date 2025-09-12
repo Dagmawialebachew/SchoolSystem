@@ -1,13 +1,15 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404
 from django.db.models import Q
-
-
+from .utilis import CleanUpOrphans
+from django.contrib import messages
+from django.shortcuts import redirect
+from students.models import Student
 class RoleRequiredMixin(LoginRequiredMixin):
     """Mixin to require specific user roles"""
     allowed_roles = []
-    
+    CleanUpOrphans()
+  
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
@@ -19,8 +21,12 @@ class RoleRequiredMixin(LoginRequiredMixin):
         if user_role not in self.allowed_roles and not request.user.is_super_admin():
             raise PermissionDenied("You don't have permission to access this page.")
         
-        return super().dispatch(request, *args, **kwargs)
+        
+        def handle_no_permission(self):
+            messages.error(self.request, "Access denied. You don't have permission to view this page.")
+            return redirect(self.request.META.get('HTTP_REFERER', '/'))
 
+        return super().dispatch(request, *args, **kwargs)
 
 class SchoolScopedMixin:
     """Mixin to automatically scope querysets by user's school"""
@@ -39,11 +45,14 @@ class SchoolScopedMixin:
         return queryset
     
     def form_valid(self, form):
-        """Automatically set school for new objects"""
-        if hasattr(form.instance, 'school') and not form.instance.school:
-            if not self.request.user.is_super_admin():
-                form.instance.school = self.request.user.school
+        """Automatically set school for new objects (only for Create/Update)"""
+        # Only attach school if form has .instance (i.e., ModelForm)
+        if hasattr(form, "instance") and hasattr(form.instance, "school"):
+            if not form.instance.school:
+                if not self.request.user.is_super_admin():
+                    form.instance.school = self.request.user.school
         return super().form_valid(form)
+
 
 
 class ParentScopedMixin:
@@ -61,3 +70,7 @@ class ParentScopedMixin:
             )
         
         return queryset
+    
+  
+  
+

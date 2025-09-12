@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if object %}Edit Invoice #{{ object.id }}{% else %}Create Invoice{% endif %} - SchoolSystem
+{% endblock %}
+
+{% block content %}
+{% include "partials/_finance_header_tabs.html"%}
+
+<div class="bg-white shadow-sm rounded-2xl border border-gray-100 max-w-3xl mx-auto p-8">
+  <h2 class="text-xl font-bold text-gray-900 mb-6">
+    {% if object %}Edit Invoice #{{ object.id }}{% else %}Create a New Invoice{% endif %}
+  </h2>
+
+  <form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <!-- Render Form Fields -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="{{ form.student.id_for_label }}" class="block text-sm font-medium text-gray-700">Student</label>
+        {{ form.student }}
+        {% if form.student.errors %}
+          <p class="text-sm text-red-600 mt-1">{{ form.student.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.fee.id_for_label }}" class="block text-sm font-medium text-gray-700">Fee Structure</label>
+        {{ form.fee }}
+        {% if form.fee.errors %}
+          <p class="text-sm text-red-600 mt-1">{{ form.fee.errors.0 }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="{{ form.amount_due.id_for_label }}" class="block text-sm font-medium text-gray-700">Amount Due</label>
+        {{ form.amount_due }}
+        {% if form.amount_due.errors %}
+          <p class="text-sm text-red-600 mt-1">{{ form.amount_due.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.amount_paid.id_for_label }}" class="block text-sm font-medium text-gray-700">Amount Paid</label>
+        {{ form.amount_paid }}
+        {% if form.amount_paid.errors %}
+          <p class="text-sm text-red-600 mt-1">{{ form.amount_paid.errors.0 }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">Status</label>
+        {{ form.status }}
+        {% if form.status.errors %}
+          <p class="text-sm text-red-600 mt-1">{{ form.status.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.due_date.id_for_label }}" class="block text-sm font-medium text-gray-700">Due Date</label>
+        {{ form.due_date }}
+        {% if form.due_date.errors %}
+          <p class="text-sm text-red-600 mt-1">{{ form.due_date.errors.0 }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Submit Buttons -->
+    <div class="flex justify-end space-x-4">
+      <a href="{% url 'fees:invoices_list' %}" 
+         class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+        Cancel
+      </a>
+      <button type="submit" 
+              class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-md transition">
+        {% if object %}Update Invoice{% else %}Create Invoice{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

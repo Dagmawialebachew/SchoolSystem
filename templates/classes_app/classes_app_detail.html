@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow rounded-lg p-6 mt-6">
+    <h1 class="text-2xl font-semibold text-gray-800 mb-4">{{ class_program.name }}</h1>
+
+    <p><span class="font-semibold">Subject:</span> {{ class_program.subject }}</p>
+    <p><span class="font-semibold">Teacher:</span> {{ class_program.teacher }}</p>
+    <p><span class="font-semibold">Schedule:</span> {{ class_program.schedule }}</p>
+
+    {% if class_program.document %}
+        <p><span class="font-semibold">Document:</span> 
+            <a href="{{ class_program.document.url }}" target="_blank" class="text-blue-600 underline">Download</a>
+        </p>
+    {% endif %}
+
+    <div class="mt-6 flex space-x-3">
+        <a href="{% url 'classes_app:update' class_program.pk %}"
+           class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Edit</a>
+        <a href="{% url 'classes_app:delete' class_program.pk %}"
+           class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</a>
+        <a href="{% url 'classes_app:list' %}"
+           class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Back</a>
+    </div>
+</div>
+{% endblock %}

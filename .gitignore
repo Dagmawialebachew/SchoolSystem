@@ -1,2 +1,81 @@
-node_modules
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ---- Django / SQLite ----
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+
+# ---- Environments ----
 .env
+venv/
+env/
+ENV/
+.env.local
+.env.*.local
+
+# ---- Static / Media (collected or uploaded) ----
+
+
+
+# ---- VSCode / PyCharm ----
+.vscode/
+.idea/
+
+# ---- Byte-compiled / distribution ----
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg-info/
+MANIFEST
+
+# ---- Testing / Coverage ----
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ---- Reports / PDFs ----
+*.pdf
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- MyPy / Pyright ----
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ---- Node / Frontend (if using Tailwind, npm, etc.) ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+.next/
+out/

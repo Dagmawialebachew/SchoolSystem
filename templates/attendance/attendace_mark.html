@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<h1 class="text-xl font-bold mb-4">Mark Attendance</h1>
+
+<form method="post">
+  {% csrf_token %}
+  <table class="min-w-full border">
+    <thead>
+      <tr>
+        <th class="border px-2">Student</th>
+        <th class="border px-2">Status</th>
+        <th class="border px-2">Quick Toggle</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for form in form.forms %}
+      <tr>
+        <td class="border px-2">{{ form.instance.student }}</td>
+        <td class="border px-2">{{ form.status }}</td>
+        <td class="border px-2">
+          <button 
+            type="button" 
+            hx-post="{% url 'attendance:toggle-attendance' form.instance.id %}"
+            hx-swap="outerHTML"
+            class="px-2 py-1 bg-gray-200 rounded">
+            {{ form.instance.status }}
+          </button>
+        </td>
+        {{ form.id }}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg">Save All</button>
+</form>
+{% endblock %}

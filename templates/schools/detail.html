@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ school.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white shadow rounded-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">{{ school.name }}</h1>
+    <p><span class="font-medium">Address:</span> {{ school.address|default:"—" }}</p>
+    <p><span class="font-medium">Phone:</span> {{ school.phone|default:"—" }}</p>
+    <p><span class="font-medium">Email:</span> {{ school.email|default:"—" }}</p>
+    <p><span class="font-medium">Website:</span> 
+        {% if school.website %}
+            <a href="{{ school.website }}" class="text-blue-600 hover:underline" target="_blank">
+                {{ school.website }}
+            </a>
+        {% else %}
+            —
+        {% endif %}
+    </p>
+
+    <div class="mt-6 flex space-x-3">
+        <a href="{% url 'schools:update' school.pk %}" 
+           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Edit</a>
+        <a href="{% url 'schools:delete' school.pk %}" 
+           class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Delete</a>
+        <a href="{% url 'schools:list' %}" 
+           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Back</a>
+    </div>
+</div>
+{% endblock %}

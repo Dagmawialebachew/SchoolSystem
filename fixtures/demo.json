@@ -1,0 +1,59 @@
+[
+  {
+    "model": "accounts.user",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$720000$5hY3L0rQpOjFZbmKk5HR9Y$MWQ6loM5OyRh2snW9sXrN8gPr9q3Ecc3pQXf+IrBrnM=",  
+      "last_login": null,
+      "is_superuser": true,
+      "username": "admin",
+      "first_name": "Super",
+      "last_name": "Admin",
+      "email": "admin@aaacademy.et",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2023-09-01T08:00:00Z",
+      "role": "admin",
+      "phone": "+251911000000",
+      "school": 1
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$720000$G+uL5i08iVd5Wh4oQ1vhSg$hTmraU3Md0hrYd+zk6EBU2Kmdq/5Tvh4TTCeJ3sFHQw=",  
+      "last_login": null,
+      "is_superuser": false,
+      "username": "teacher1",
+      "first_name": "Mulu",
+      "last_name": "Getachew",
+      "email": "mulu.getachew@aaacademy.et",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2023-09-01T08:10:00Z",
+      "role": "teacher",
+      "phone": "+251911112233",
+      "school": 1
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 3,
+    "fields": {
+      "password": "pbkdf2_sha256$720000$TT9yB4S4dkMBU77x2QEkDg$EFeVmE3v/vRrQwvnJIkxn7MOhZyoMMkdMvZb9eq+acI=",  
+      "last_login": null,
+      "is_superuser": false,
+      "username": "parent1",
+      "first_name": "Tadesse",
+      "last_name": "Alemu",
+      "email": "parent1@aaacademy.et",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2023-09-01T08:20:00Z",
+      "role": "parent",
+      "phone": "+251922334455",
+      "school": 1
+    }
+  }
+]

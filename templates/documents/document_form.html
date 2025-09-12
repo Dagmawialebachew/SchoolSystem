@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ view.action }} Document - SchoolSystem{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">{{ view.action }} Document</h1>
+
+<form method="post" enctype="multipart/form-data" class="bg-white shadow rounded-lg p-6">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit" class="btn-primary mt-4">Save</button>
+    <a href="{% url 'documents:list' %}" class="btn-secondary mt-4">Cancel</a>
+</form>
+{% endblock %}

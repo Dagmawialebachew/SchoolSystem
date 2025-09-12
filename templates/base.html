@@ -1,4 +1,5 @@
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
@@ -6,18 +7,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SchoolSystem{% endblock %}</title>
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
+      <script src="{% static 'js/chart.min.js' %}"></script> 
+      <script src="{% static 'js/dashboard-charts.js' %}"></script>
+
+
+<link rel="stylesheet" 
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
+      referrerpolicy="no-referrer" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body class="h-full bg-gray-50 font-poppins">
+<body class="h-full bg-neutral-100 font-poppins pt-16">
     <div class="min-h-full">
-        {% if user.is_authenticated %}
+        {% if user.is_authenticated and user.is_verified %}
             {% include 'partials/navbar.html' %}
-            
             <div class="flex">
                 {% include 'partials/sidebar.html' %}
-                
                 <main class="flex-1 p-6">
                     {% include 'partials/flash.html' %}
                     {% block content %}
@@ -27,7 +33,7 @@
         {% else %}
             <main class="min-h-screen flex items-center justify-center">
                 {% include 'partials/flash.html' %}
-                {% block content %}
+                {% block alt_content %}
                 {% endblock %}
             </main>
         {% endif %}

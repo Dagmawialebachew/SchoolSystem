@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Document Detail - SchoolSystem{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Document Detail</h1>
+
+<div class="bg-white shadow rounded-lg p-6">
+    <p><strong>Type:</strong> {{ object.get_doc_type_display }}</p>
+    <p><strong>Assigned To:</strong>
+        {% if object.assigned_student %}
+            Student: {{ object.assigned_student.full_name }}
+        {% elif object.assigned_class %}
+            Class: {{ object.assigned_class.name }}
+        {% else %}
+            <span class="text-gray-400">Unassigned</span>
+        {% endif %}
+    </p>
+    <p><strong>Uploaded By:</strong> {{ object.uploaded_by.username }}</p>
+    <p><strong>Uploaded At:</strong> {{ object.uploaded_at }}</p>
+    <p><strong>File:</strong> <a href="{{ object.file.url }}" target="_blank" class="text-blue-600 underline">Download</a></p>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'documents:list' %}" class="btn-secondary">Back to List</a>
+</div>
+{% endblock %}

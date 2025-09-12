@@ -7,6 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('dashboard.urls')),
     path('accounts/', include('accounts.urls')),
+    path('onboarding/', include('onboarding.urls')),
     path('schools/', include('schools.urls')),
     path('students/', include('students.urls')),
     path('teachers/', include('teachers.urls')),
@@ -15,7 +16,8 @@ urlpatterns = [
     path('fees/', include('fees.urls')),
     path('documents/', include('documents.urls')),
     path('notifications/', include('notifications.urls')),
-    path('dashboard/', include('dashboard.urls')),
+    path("__reload__/", include("django_browser_reload.urls")),
+
 ]
 
 if settings.DEBUG:

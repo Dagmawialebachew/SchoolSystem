@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Invoices - SchoolSystem{% endblock %}
+{% load humanize %}
+{% block content %}
+{% include "partials/_finance_header_tabs.html" %}
+
+<!-- Search & Filters -->
+<form method="get" class="mb-6 flex flex-col sm:flex-row gap-3">
+    <input type="text" name="search" placeholder="Search by student or invoice ID"
+           value="{{ search_query }}"
+           class="flex-1 p-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500">
+
+    <select name="status" class="p-2.5 border border-gray-300 rounded-xl">
+        <option value="">All Statuses</option>
+        {% for code, label in status_choices %}
+        <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>
+            {{ label }}
+        </option>
+        {% endfor %}
+    </select>
+
+    
+    <button type="submit" 
+    class="px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 shadow-sm transition">
+    Filter
+  </button>
+  <a href="{% url 'fees:invoices_list' %}" 
+  class="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 shadow-sm transition">
+  Clear
+  </a>
+</form>
+
+<!-- Table -->
+<div class="overflow-hidden text-sm bg-white shadow-sm rounded-2xl border border-gray-100">
+  <table class="min-w-full table table-hover">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Unpaid</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Paid</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Invoices</th>
+        <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for student in students %}
+      <tr class="hover:bg-gray-100 transition clickable-row cursor-pointer" data-href = "{% url 'fees:invoice_detail' student.pk %}">
+        <td class="px-6 py-4 text-gray-500">{{ forloop.counter }}</td>
+        <td class="px-6 py-4 font-medium text-gray-900">{{ student.full_name }}</td>
+    <td class="px-6 py-4 text-red-600">{{ student.total_unpaid|default:"0"|intcomma}} Br.</td>
+        <td class="px-6 py-4 text-green-600">{{ student.total_paid|default:"0"|intcomma}} Br.</td>
+        <td class="px-6 py-4">
+{% if student.total_unpaid|default_if_none:"0"|floatformat:"0" == "0" %}            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700">Clear</span>
+          {% elif student.total_paid %}
+            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-yellow-100 text-yellow-700">Partial</span>
+          {% else %}
+            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700">Unpaid</span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4">{{ student.invoices_count }}</td>
+        <td class="px-6 py-4 text-right flex justify-end gap-2">
+          <a href="{% url 'fees:invoice_detail' student.pk %}" 
+             class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100">View</a>
+          <a href="{% url 'students:edit' student.pk %}" 
+             class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100">Edit</a>
+          <a href="{% url 'students:delete' student.pk %}" 
+             class="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">Delete</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="px-6 py-6 text-center text-gray-500">No students with invoices found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+  <div class="flex justify-between items-center mt-6 px-6 pb-6">
+    <div class="text-sm text-gray-600">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </div>
+    <div class="space-x-2">
+      {% if page_obj.has_previous %}
+        <a href="?page=1&search={{ search_query }}" class="px-3 py-1 border rounded hover:bg-gray-100">First</a>
+        <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}" class="px-3 py-1 border rounded hover:bg-gray-100">Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}" class="px-3 py-1 border rounded hover:bg-gray-100">Next</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}&search={{ search_query }}" class="px-3 py-1 border rounded hover:bg-gray-100">Last</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

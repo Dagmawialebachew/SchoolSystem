@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ school.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto bg-white shadow rounded-lg p-6">
+    <h1 class="text-xl font-semibold text-red-600 mb-4">Delete School</h1>
+    <p>Are you sure you want to delete <strong>{{ school.name }}</strong>? This action cannot be undone.</p>
+
+    <form method="post" class="mt-6 flex justify-end space-x-3">
+        {% csrf_token %}
+        <a href="{% url 'schools:list' %}" 
+           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Cancel</a>
+        <button type="submit" 
+                class="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition">
+            Confirm Delete
+        </button>
+    </form>
+</div>
+{% endblock %}

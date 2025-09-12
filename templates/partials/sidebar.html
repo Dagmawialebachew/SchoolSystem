@@ -1,70 +1,126 @@
-<aside class="w-64 bg-white shadow-sm h-full">
-    <nav class="mt-4 px-4">
-        <ul class="space-y-2">
-            <li>
-                <a href="{% url 'dashboard:dashboard' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-50">
-                    Dashboard
-                </a>
-            </li>
-            
-            {% if user.is_super_admin or user.is_school_admin %}
-            <li>
-                <a href="{% url 'schools:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Schools
-                </a>
-            </li>
-            {% endif %}
-            
-            <li>
-                <a href="{% url 'students:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Students
-                </a>
-            </li>
-            
-            <li>
-                <a href="{% url 'teachers:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Teachers
-                </a>
-            </li>
-            
-            <li>
-                <a href="{% url 'classes_app:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Classes
-                </a>
-            </li>
-            
-            <li>
-                <a href="{% url 'attendance:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Attendance
-                </a>
-            </li>
-            
-            <li>
-                <a href="{% url 'fees:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Fees
-                </a>
-            </li>
-            
-            <li>
-                <a href="{% url 'documents:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Documents
-                </a>
-            </li>
-            
-            <li>
-                <a href="{% url 'notifications:list' %}" 
-                   class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
-                    Notifications
-                </a>
-            </li>
-        </ul>
+<!-- Sidebar Wrapper -->
+<div class="relative">
+  <!-- Mobile overlay -->
+  <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 hidden z-40 md:hidden"></div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 w-64 min-h-screen bg-white border-r border-neutral-200 shadow-md transform -translate-x-full transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:static md:inset-0">
+    
+    <!-- Logo / Brand -->
+    <div class="h-16 flex items-center px-6 border-b border-neutral-200">
+      <span class="text-xl font-montserrat font-bold text-primary-600">SchoolSystem</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="mt-4 px-2">
+      <ul class="space-y-1">
+
+        <!-- Dashboard -->
+        <li>
+          <a href="{% url 'dashboard:dashboard' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-tachometer-alt w-5 mr-3 text-primary-500"></i>
+            Dashboard
+          </a>
+        </li>
+
+        <!-- Schools -->
+        {% if user.is_super_admin%}
+        <li>
+          <a href="{% url 'schools:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-school w-5 mr-3 text-primary-500"></i>
+            Schools
+          </a>
+        </li>
+        {% endif %}
+
+        <!-- Students -->
+        <li>
+          <a href="{% url 'students:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-user-graduate w-5 mr-3 text-primary-500"></i>
+            Students
+          </a>
+        </li>
+
+        <!-- Teachers -->
+        <li>
+          <a href="{% url 'teachers:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-chalkboard-teacher w-5 mr-3 text-primary-500"></i>
+            Teachers
+          </a>
+        </li>
+
+        <!-- Classes -->
+        <li>
+          <a href="{% url 'classes_app:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-book-open w-5 mr-3 text-primary-500"></i>
+            Classes
+          </a>
+        </li>
+
+        <!-- Attendance -->
+        <li>
+          <a href="{% url 'attendance:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-calendar-check w-5 mr-3 text-primary-500"></i>
+            Attendance
+          </a>
+        </li>
+
+        <!-- Fees -->
+        <li>
+          <a href="{% url 'fees:fee-dashboard' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-credit-card w-5 mr-3 text-primary-500"></i>
+            Fees
+          </a>
+        </li>
+
+        <!-- Documents -->
+        <li>
+          <a href="{% url 'documents:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-file-alt w-5 mr-3 text-primary-500"></i>
+            Documents
+          </a>
+        </li>
+
+        <!-- Notifications -->
+        <li>
+          <a href="{% url 'notifications:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+            <i class="fas fa-bell w-5 mr-3 text-primary-500"></i>
+            Notifications
+          </a>
+        </li>
+      </ul>
     </nav>
-</aside>
+  </aside>
+</div>
+
+<!-- Font Awesome (Free CDN) -->
+
+
+<!-- Sidebar Toggle Script -->
+<script>
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  const sidebarToggle = document.getElementById("mobile-menu-button"); // from navbar
+
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("-translate-x-full");
+      overlay.classList.toggle("hidden");
+    });
+  }
+
+  overlay.addEventListener("click", () => {
+    sidebar.classList.add("-translate-x-full");
+    overlay.classList.add("hidden");
+  });
+</script>

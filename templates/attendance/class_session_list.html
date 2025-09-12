@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-xl font-bold mb-4">Today's Classes</h1>
+<ul class="space-y-2">
+  {% for class in object_list %}
+    <li class="p-3 border rounded-lg flex justify-between items-center">
+      <span>{{ class.name }}</span>
+      <a href="{% url 'attendance:mark-attendance' class.id %}" 
+         class="px-3 py-1 bg-blue-600 text-white rounded-lg">Mark Attendance</a>
+    </li>
+  {% empty %}
+    <p>No classes today.</p>
+  {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <h2 class="text-xl font-semibold mb-4">Announcements</h2>
+  <ul class="space-y-4">
+    {% for ann in announcements %}
+    <li class="p-4 bg-gray-50 rounded-lg shadow hover:shadow-md">
+      <h3 class="text-lg font-bold">{{ ann.title }}</h3>
+      <p class="text-gray-700">{{ ann.message }}</p>
+      <span class="text-sm text-gray-500">Posted {{ ann.created_at|date:"M d, Y H:i" }}</span>
+    </li>
+    {% empty %}
+    <p class="text-gray-500">No announcements yet.</p>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

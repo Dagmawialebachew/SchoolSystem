@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Documents - SchoolSystem{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-semibold text-gray-900">Documents</h1>
+    {% if user.is_school_admin or user.is_admin %}
+    <a href="{% url 'documents:add' %}" class="btn-primary">+ Add Document</a>
+    {% endif %}
+</div>
+
+<div class="overflow-x-auto bg-white shadow rounded-lg">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded By</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded At</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for document in object_list %}
+            <tr>
+                <td class="px-6 py-4 text-sm text-blue-600">
+                    <a href="{{ document.file.url }}" target="_blank">{{ document.file.name|slice:"10:" }}</a>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-900">{{ document.get_doc_type_display }}</td>
+                <td class="px-6 py-4 text-sm text-gray-900">
+                    {% if document.assigned_student %}
+                        Student: {{ document.assigned_student.full_name }}
+                    {% elif document.assigned_class %}
+                        Class: {{ document.assigned_class.name }}
+                    {% else %}
+                        <span class="text-gray-400">Unassigned</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-900">{{ document.uploaded_by.username }}</td>
+                <td class="px-6 py-4 text-sm text-gray-900">{{ document.uploaded_at }}</td>
+                <td class="px-6 py-4 text-right text-sm font-medium">
+                    <a href="{% url 'documents:detail' document.pk %}" class="text-indigo-600 hover:text-indigo-900 mr-2">View</a>
+                    {% if user.is_school_admin or user.is_admin %}
+                        <a href="{% url 'documents:edit' document.pk %}" class="text-blue-600 hover:text-blue-900 mr-2">Edit</a>
+                        <a href="{% url 'documents:delete' document.pk %}" class="text-red-600 hover:text-red-900">Delete</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500">No documents found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

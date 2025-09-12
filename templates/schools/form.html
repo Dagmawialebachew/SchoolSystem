@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ view.object|default:"New School" }}{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white shadow rounded-lg p-6">
+    <h1 class="text-xl font-semibold text-gray-800 mb-4">
+        {% if view.object %}Edit School{% else %}Create School{% endif %}
+    </h1>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="space-y-4">
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <p class="text-sm text-red-600">{{ field.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-6 flex justify-end space-x-3">
+            <a href="{% url 'schools:list' %}" 
+               class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Cancel</a>
+            <button type="submit" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
+                Save
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

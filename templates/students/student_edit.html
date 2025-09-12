@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Student - SchoolSystem{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900 flex items-center">
+            <i class="fas {% if object %}fa-user-edit{% else %}fa-user-plus{% endif %} text-blue-600 mr-2"></i>
+            {% if object %}Edit Student{% else %}Add Student{% endif %}
+        </h1>
+        <a href="{% url 'students:list' %}" class="text-sm text-gray-600 hover:text-blue-600">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Students
+        </a>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white shadow-lg rounded-xl p-8 border border-gray-100">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% render_field form.first_name %}
+                {% render_field form.last_name %}
+            </div>
+
+            {% render_field form.date_of_birth %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% render_field form.parent_name %}
+                {% render_field form.parent_phone %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% render_field form.next_payment_date %}
+                {% render_field form.payment_status %}
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-6 border-t">
+                <a href="{% url 'students:list' %}"
+                   class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </a>
+                <button type="submit"
+                        class="px-5 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 transition">
+                    <i class="fas fa-save mr-1"></i>
+                    {% if object %}Update{% else %}Create{% endif %} Student
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
