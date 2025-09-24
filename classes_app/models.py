@@ -1,19 +1,19 @@
+# classes_app/models.py
 from django.db import models
 from core.models import SchoolOwnedModel
-from teachers.models import Teacher
-
 
 class ClassProgramQuerySet(models.QuerySet):
     def for_user(self, user):
-        """Scope classes based on role"""
-        if user.role == 'SUPER_ADMIN':
+        if user.role == "SUPER_ADMIN":
             return self.all()
-        elif user.role == 'SCHOOL_ADMIN':
+        elif user.role == "SCHOOL_ADMIN":
             return self.filter(school=user.school)
-        elif user.role == 'TEACHER':
+        elif user.role == "TEACHER":
             teacher = getattr(user, "teacher_profile", None)
-            return self.filter(teacher=teacher) if teacher else self.none()
-        else:  # Parent/student
+            return self.filter(
+                models.Q(teacher=teacher) | models.Q(subject_assignments__teacher=teacher)
+            ).distinct() if teacher else self.none()
+        else:
             return self.none()
 
 class Division(SchoolOwnedModel):
@@ -23,26 +23,21 @@ class Division(SchoolOwnedModel):
         ("PRIMARY_5_8", "Primary (Grades 5–8)"),
         ("SECONDARY_9_12", "Secondary (Grades 9–12)"),
     ]
-
     name = models.CharField(max_length=50, choices=DIVISION_CHOICES)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    in_progress = models.BooleanField(default= True)
+    in_progress = models.BooleanField(default=True)
+
     class Meta:
         unique_together = ("school", "name")
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.school.name} - {self.get_name_display()}"
-
+        return self.name
 
 class Subject(SchoolOwnedModel):
-    division = models.ForeignKey(
-        Division,
-        on_delete=models.CASCADE,
-        related_name="subjects"
-    )
-    name = models.CharField(max_length=100)  
+    division = models.ForeignKey("Division", on_delete=models.CASCADE, related_name="subjects")
+    name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
 
@@ -51,34 +46,23 @@ class Subject(SchoolOwnedModel):
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.name} ({self.division})"
-
-
-class ClassProgramQuerySet(models.QuerySet):
-    def for_user(self, user):
-        if user.role == 'SUPER_ADMIN':
-            return self.all()
-        elif user.role == 'SCHOOL_ADMIN':
-            return self.filter(school=user.school)
-        elif user.role == 'TEACHER':
-            teacher = getattr(user, "teacher_profile", None)
-            return self.filter(teacher=teacher) if teacher else self.none()
-        else:
-            return self.none()
-
+        return f"{self.name} ({self.division.get_name_display()})"
 
 class ClassProgram(SchoolOwnedModel):
-    division = models.ForeignKey(
-        Division,
-        on_delete=models.CASCADE,
-        related_name="classes"
-    )
+    division = models.ForeignKey("Division", on_delete=models.CASCADE, related_name="classes")
     name = models.CharField(max_length=100)
+    teachers = models.ManyToManyField(
+        "teachers.Teacher",
+        through="ClassTeacherAssignment",
+        related_name="assigned_classes",
+        blank=True
+    )
     teacher = models.ForeignKey(
-        Teacher,
+        "teachers.Teacher",
         on_delete=models.SET_NULL,
         null=True,
-        blank=True
+        blank=True,
+        related_name="optional_classes",
     )
     schedule = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -96,28 +80,35 @@ class ClassProgram(SchoolOwnedModel):
     def subjects(self):
         return self.division.subjects.all()
 
+    @property
+    def homeroom_teachers(self):
+        return self.teacher_assignments.filter(is_homeroom_teacher=True)
+
+    @property
+    def homeroom_count(self):
+        return self.homeroom_teachers.count()
+
+class ClassTeacherAssignment(SchoolOwnedModel):
+    class_program = models.ForeignKey("ClassProgram", on_delete=models.CASCADE, related_name="teacher_assignments")
+    teacher = models.ForeignKey("teachers.Teacher", on_delete=models.CASCADE, related_name="class_assignments")
+    is_homeroom_teacher = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("class_program", "teacher")
+        ordering = ["class_program", "teacher"]
+
+    def __str__(self):
+        role = "Homeroom" if self.is_homeroom_teacher else "Teacher"
+        return f"{self.teacher} - {self.class_program} ({role})"
 
 class ClassSubjectAssignment(SchoolOwnedModel):
-    class_program = models.ForeignKey(
-        ClassProgram,
-        on_delete=models.CASCADE,
-        related_name="subject_assignments"
-    )
-    subject = models.ForeignKey(
-        Subject,
-        on_delete=models.CASCADE,
-        related_name="class_assignments"
-    )
-    teacher = models.ForeignKey(
-        Teacher,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="class_subject_assignments"
-    )
+    class_program = models.ForeignKey("ClassProgram", on_delete=models.CASCADE, related_name="subject_assignments")
+    subject = models.ForeignKey("Subject", on_delete=models.CASCADE, related_name="class_assignments")
+    teacher = models.ForeignKey("teachers.Teacher", on_delete=models.SET_NULL, null=True, blank=True, related_name="subject_assignments")
 
     class Meta:
         unique_together = ("class_program", "subject")
+        ordering = ["class_program", "subject"]
 
     def __str__(self):
         return f"{self.class_program} - {self.subject} ({self.teacher or 'Unassigned'})"

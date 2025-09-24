@@ -1,43 +1,232 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Class - SchoolSystem{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white shadow-md rounded-2xl p-8 mt-10">
+<div class="max-w-4xl mx-auto mt-10">
     <!-- Header -->
-    <h1 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <i class="fas fa-chalkboard-teacher text-primary-600"></i>
-        {% if form.instance.pk %} Edit Class {% else %} Create Class {% endif %}
-    </h1>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+            <i class="fas fa-chalkboard text-primary-600"></i>
+            {% if form.instance.pk %} Edit Class {% else %} Add Class {% endif %}
+        </h1>
+        <a href="{% url 'classes_app:list' %}" class="text-sm font-medium text-neutral-600 hover:text-primary-600 transition">
+            <i class="fas fa-arrow-left mr-1"></i> Back to Classes
+        </a>
+    </div>
 
-    <form method="post" enctype="multipart/form-data" class="space-y-6 grid md:gap-6 md:grid-cols-2 grid-cols-1">
-        {% csrf_token %}
+    <!-- Card -->
+    <div class="bg-white shadow-md rounded-2xl p-8 border border-neutral-200">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
 
-        <!-- Render each field manually for Tailwind control -->
-        {% for field in form %}
-            <div>
-                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ field.label }}
-                </label>
-                {{ field }}
-                {% if field.help_text %}
-                    <p class="text-xs text-gray-500 mt-1">{{ field.help_text }}</p>
-                {% endif %}
-                {% for error in field.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
-            </div>
-        {% endfor %}
+            <!-- Collapsible: Class Info -->
+            <div class="border border-neutral-200 rounded-xl overflow-hidden">
+                <button type="button" class="collapsible w-full flex justify-between items-center px-4 py-3 bg-neutral-100 hover:bg-neutral-200">
+                    <span class="font-semibold text-neutral-800"><i class="fas fa-info-circle mr-2 text-primary-600"></i> Class Info</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="collapsible-content p-4 grid-cols-1 md:grid-cols-2 gap-4 grid">
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Class Name *</label>
+                        {{ form.name|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Division *</label>
+                        {{ form.division|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                  <!-- ...existing code above... -->
 
-        <!-- Buttons -->
-        <div class="flex space-x-3 pt-4">
-            <button type="submit"
-                class="px-5 py-2.5 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition">
-                <i class="fas fa-save mr-1"></i> Save
-            </button>
-            <a href="{% url 'classes_app:list' %}"
-               class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200 transition">
-                <i class="fas fa-times mr-1"></i> Cancel
-            </a>
-        </div>
-    </form>
+<div>
+  <label class="block text-sm font-semibold text-neutral-700 mb-2">Homeroom Teachers</label>
+
+  <!-- Trigger -->
+  <button type="button" id="openTeacherModal"
+          class="w-full rounded-lg border border-neutral-300 px-4 py-2 text-left shadow-sm hover:bg-neutral-50 flex items-center justify-between">
+    <span id="teacherTriggerText">Choose up to 2 teachers…</span>
+    <i class="fas fa-chevron-down text-neutral-400"></i>
+  </button>
+  <p class="text-xs text-gray-500 mt-1">Select up to 2 homeroom teachers (optional).</p>
+
+  <!-- Selected chips preview -->
+  <div id="selectedChips" class="mt-2 flex flex-wrap gap-2"></div>
+
+  <!-- Hidden inputs for submission -->
+  <div id="hiddenInputs"></div>
 </div>
-{% endblock %}
+
+<!-- Modal -->
+<div id="teacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/40" id="closeTeacherModal"></div>
+  <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Select Homeroom Teachers</h2>
+      <button type="button" id="closeTeacherModalBtn" class="text-neutral-500 hover:text-neutral-800">&times;</button>
+    </div>
+
+    <!-- Search -->
+    <input type="text" id="teacherSearch" placeholder="Search teachers…"
+           class="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm shadow-sm">
+
+    <!-- Teacher list -->
+    <div id="teacherList" class="max-h-64 overflow-y-auto space-y-2"></div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-2 pt-2">
+      <button type="button" id="cancelTeacherModal" class="px-4 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50">Cancel</button>
+      <button type="button" id="doneTeacherModal" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ...existing fields below... -->
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Schedule</label>
+                        {{ form.schedule|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex justify-end space-x-3 pt-6 border-t">
+                <a href="{% url 'classes_app:list' %}"
+                   class="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </a>
+                <button type="submit"
+                        class="px-5 py-2 rounded-lg text-sm font-semibold bg-primary-600 text-white shadow-md hover:bg-primary-700 transition">
+                    <i class="fas fa-save mr-1"></i>
+                    {% if form.instance.pk %} Update {% else %} Create {% endif %} Class
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<script id="teachers-data" type="application/json">
+[
+  {% for t in form.fields.homeroom_teachers.queryset %}
+    {"id": {{ t.id }}, "name": "{{ t.full_name|escapejs }}", "specialization": "{{ t.specialization|default:''|escapejs }}"}{% if not forloop.last %},{% endif %}
+  {% endfor %}
+]
+</script>
+
+<script id="selected-data" type="application/json">
+{% with selected_ids=form.homeroom_teachers.value %}
+  [{% if selected_ids %}{% for id in selected_ids %}{{ id }}{% if not forloop.last %},{% endif %}{% endfor %}{% endif %}]
+{% endwith %}
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const teachers = JSON.parse(document.getElementById("teachers-data").textContent || "[]");
+  const selectedIds = JSON.parse(document.getElementById("selected-data").textContent || "[]");
+
+  let selected = teachers.filter(t => selectedIds.includes(t.id));
+
+  const modal = document.getElementById("teacherModal");
+  const openBtn = document.getElementById("openTeacherModal");
+  const closeEls = [document.getElementById("closeTeacherModal"), document.getElementById("closeTeacherModalBtn"), document.getElementById("cancelTeacherModal"), document.getElementById("doneTeacherModal")];
+  const searchInput = document.getElementById("teacherSearch");
+  const listEl = document.getElementById("teacherList");
+  const chipsEl = document.getElementById("selectedChips");
+  const hiddenInputsEl = document.getElementById("hiddenInputs");
+  const triggerText = document.getElementById("teacherTriggerText");
+
+  function render() {
+    // Update chips
+    chipsEl.innerHTML = "";
+    selected.forEach(t => {
+      const chip = document.createElement("span");
+      chip.className = "inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2.5 py-1 text-xs";
+      chip.innerHTML = `${t.name} <button type="button" class="text-blue-600 hover:text-blue-800">&times;</button>`;
+      chip.querySelector("button").onclick = () => {
+        selected = selected.filter(s => s.id !== t.id);
+        render();
+      };
+      chipsEl.appendChild(chip);
+    });
+
+    // Update hidden inputs
+    hiddenInputsEl.innerHTML = "";
+    selected.forEach(t => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "homeroom_teachers";
+      input.value = t.id;
+      hiddenInputsEl.appendChild(input);
+    });
+
+    // Update trigger text
+    triggerText.textContent = selected.length ? selected.map(t => t.name).join(", ") : "Choose up to 2 teachers…";
+  }
+
+  function renderList() {
+  const q = searchInput.value.toLowerCase();
+  let filtered = teachers.filter(t =>
+    t.name.toLowerCase().includes(q) || (t.specialization || "").toLowerCase().includes(q)
+  );
+
+  // Sort so selected teachers come first
+  filtered.sort((a, b) => {
+    const aSelected = selected.some(s => s.id === a.id);
+    const bSelected = selected.some(s => s.id === b.id);
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return a.name.localeCompare(b.name); // fallback alphabetical
+  });
+
+  listEl.innerHTML = "";
+  filtered.slice(0, 5).forEach(t => {
+    const label = document.createElement("label");
+    label.className = "flex items-center gap-3 p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selected.some(s => s.id === t.id);
+    checkbox.disabled = selected.length >= 2 && !selected.some(s => s.id === t.id);
+    checkbox.className = "rounded text-primary-600 focus:ring-primary-500";
+    checkbox.onchange = () => {
+      if (checkbox.checked) {
+        if (selected.length < 2) selected.push(t);
+        else checkbox.checked = false;
+      } else {
+        selected = selected.filter(s => s.id !== t.id);
+      }
+      render();
+      renderList();
+    };
+
+    label.appendChild(checkbox);
+    const info = document.createElement("div");
+    info.innerHTML = `<div class="font-medium text-sm text-neutral-800">${t.name}</div>
+                      <div class="text-xs text-neutral-500">${t.specialization || ""}</div>`;
+    label.appendChild(info);
+    listEl.appendChild(label);
+  });
+
+  if (filtered.length > 5) {
+    const more = document.createElement("div");
+    more.className = "text-xs text-neutral-500 italic px-2";
+    more.textContent = `+${filtered.length - 5} more results…`;
+    listEl.appendChild(more);
+  }
+}
+
+
+  // Modal open/close
+  openBtn.onclick = () => { modal.classList.remove("hidden"); renderList(); };
+  closeEls.forEach(el => el.onclick = () => { modal.classList.add("hidden"); render(); });
+
+  searchInput.oninput = renderList;
+
+  // Initial render
+  render();
+});
+</script>
+
+{%endblock%}

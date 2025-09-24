@@ -1,95 +1,349 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
 
 {% block title %}{% if object %}Edit{% else %}Add{% endif %} Teacher - SchoolSystem{% endblock %}
-{% load widget_tweaks %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto">
+<div class="max-w-4xl mx-auto space-y-6">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center">
-            <i class="fas {% if object %}fa-user-edit{% else %}fa-user-plus{% endif %} text-blue-600 mr-2"></i>
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+            <i class="fas {% if object %}fa-chalkboard-teacher{% else %}fa-user-plus{% endif %} text-primary-600"></i>
             {% if object %}Edit Teacher{% else %}Add Teacher{% endif %}
         </h1>
-        <a href="{% url 'teachers:list' %}" class="text-sm text-gray-600 hover:text-blue-600 transition-colors">
+        <a href="{% url 'teachers:list' %}" class="text-sm font-medium text-neutral-600 hover:text-primary-600 transition">
             <i class="fas fa-arrow-left mr-1"></i> Back to Teachers
         </a>
     </div>
 
-    <!-- Card -->
-    <div class="bg-white shadow-md rounded-xl p-8 border border-gray-100">
-        <form method="post" class="space-y-6">
+    <!-- Form Card -->
+    <div class="bg-white shadow-md rounded-2xl p-8 border border-neutral-200">
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
             {% csrf_token %}
-            
-            <!-- Name Fields -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-user mr-2 text-blue-500"></i> First Name *
-                    </label>
-                    {{ form.first_name|add_class:"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" }}
-                    {% if form.first_name.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.first_name.errors.0 }}</p>
-                    {% endif %}
-                </div>
 
-                <div>
-                    <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-user mr-2 text-blue-500"></i> Last Name *
-                    </label>
-                    {{ form.last_name|add_class:"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" }}
-                    {% if form.last_name.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.last_name.errors.0 }}</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Bio & Phone -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="{{ form.bio.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-align-left mr-2 text-blue-500"></i> Bio
-                    </label>
-                    {{ form.bio|add_class:"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" }}
-                    {% if form.bio.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.bio.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <div>
-                    <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-phone mr-2 text-blue-500"></i> Phone
-                    </label>
-                    {{ form.phone|add_class:"w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" }}
-                    {% if form.phone.errors %}
-                        <p class="mt-1 text-sm text-red-600">{{ form.phone.errors.0 }}</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Active Status -->
-            <div class="flex items-center gap-3">
-                {{ form.is_active }}
-                <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-gray-700">
-                    <i class="fas fa-check-circle mr-2 text-green-500"></i> Is Active
-                </label>
-                {% if form.is_active.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.is_active.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            <!-- Buttons -->
-            <div class="flex justify-end space-x-3 pt-6 border-t">
-                <a href="{% url 'teachers:list' %}"
-                   class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
-                    <i class="fas fa-times mr-1"></i> Cancel
-                </a>
-                <button type="submit"
-                        class="px-5 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 transition">
-                    <i class="fas fa-save mr-1"></i>
-                    {% if object %}Update{% else %}Create{% endif %} Teacher
+            <!-- Personal Info -->
+            <div class="border border-neutral-200 rounded-xl overflow-hidden">
+                <button type="button" class="collapsible w-full flex justify-between items-center px-4 py-3 bg-neutral-100 hover:bg-neutral-200">
+                    <span class="font-semibold text-neutral-800"><i class="fas fa-user mr-2 text-primary-600"></i> Personal Info</span>
+                    <i class="fas fa-chevron-down"></i>
                 </button>
+                <div class="collapsible-content p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">First Name *</label>
+                        {{ form.first_name|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Last Name *</label>
+                        {{ form.last_name|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div >
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Email</label>
+                        {{ form.email|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Phone *</label>
+                        {{ form.phone|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                  
+                </div>
+            </div>
+
+            <!-- Academic Info -->
+            <div class="border border-neutral-200 rounded-xl overflow-hidden">
+                <button type="button" class="collapsible w-full flex justify-between items-center px-4 py-3 bg-neutral-100 hover:bg-neutral-200">
+                    <span class="font-semibold text-neutral-800"><i class="fas fa-graduation-cap mr-2 text-primary-600"></i> Academic Info</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="collapsible-content p-4 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Qualification</label>
+                        {{ form.qualification|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Specialization</label>
+                        {{ form.specialization|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Hire Date</label>
+                        {{ form.hire_date|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Employment Status</label>
+                        {{ form.employment_status|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Info -->
+            <div class="border border-neutral-200 rounded-xl overflow-hidden">
+                <button type="button" class="collapsible w-full flex justify-between items-center px-4 py-3 bg-neutral-100 hover:bg-neutral-200">
+                    <span class="font-semibold text-neutral-800"><i class="fas fa-info-circle mr-2 text-primary-600"></i> Additional Info</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="collapsible-content p-4 space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-semibold text-neutral-700 mb-2">Biography</label>
+                        {{ form.bio|add_class:"w-full rounded-lg border-neutral-300 focus:ring-2 focus:ring-primary-500 shadow-sm" }}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {{ form.is_active }}
+                        <label class="text-sm font-medium text-neutral-700">Active Teacher</label>
+                    </div>
+                </div>
+            </div>
+ <div class="border border-neutral-200 rounded-xl overflow-hidden">
+                <button type="button" class="collapsible w-full flex justify-between items-center px-4 py-3 bg-neutral-100 hover:bg-neutral-200">
+                    <span class="font-semibold text-neutral-800"><i class="fas fa-info-circle mr-2 text-primary-600"></i>Assign Classes</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            <!-- Class Picker -->
+            <div id="classPickerRoot" class="border collapsible-content border-neutral-200 rounded-xl p-4 space-y-2 block hidden" data-selected='{{ form.classes.value|json_script:"selected-classes" }}'>
+                <input type="text" id="classSearch" placeholder="Search classes…" class="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" autocomplete="off"/>
+                <div id="classActions" class="flex items-center gap-2 mt-2">
+                    <button id="classClearAll" type="button" class="text-sm text-neutral-600 hover:text-neutral-800">Clear all</button>
+                    <div id="classCountSummary" class="ml-auto text-xs text-neutral-500"></div>
+                </div>
+                <div id="classChips" class="flex flex-wrap gap-2 mt-3"></div>
+                <div id="classResults" class="max-h-64 overflow-y-auto rounded-xl border border-neutral-200 divide-y divide-neutral-200 bg-white mt-3" role="listbox"></div>
+                <p class="text-xs text-neutral-500 mt-2">{{ form.classes.help_text }}</p>
+                <div class="sr-only">{{ form.classes }}</div>
+            </div>
+
+            <!-- Form Footer -->
+            <div class="flex justify-end space-x-3 pt-6 border-t">
+                <a href="{% url 'teachers:list' %}" class="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition"><i class="fas fa-times mr-1"></i> Cancel</a>
+                <button type="submit" class="px-5 py-2 rounded-lg text-sm font-semibold bg-primary-600 text-white shadow-md hover:bg-primary-700 transition"><i class="fas fa-save mr-1"></i>{% if object %}Update{% else %}Create{% endif %} Teacher</button>
             </div>
         </form>
     </div>
 </div>
-{% endblock %}
+
+<!-- JSON Data -->
+<script id="classes-data" type="application/json">{{ classes_json|safe }}</script>
+
+
+<style>
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    
+  const root = document.getElementById("classPickerRoot");
+  if (!root) return;
+
+  const dataScript = document.getElementById("classes-data");
+  const data = dataScript ? JSON.parse(dataScript.textContent || "[]") : [];
+
+  const searchEl = document.getElementById("classSearch");
+  const chipsEl = document.getElementById("classChips");
+  const resultsEl = document.getElementById("classResults");
+  const selectEl = document.querySelector('select[name="classes"]');
+  const clearBtn = document.getElementById("classClearAll");
+  const countSummary = document.getElementById("classCountSummary");
+
+  // State: initialize from select options (Django preserves selections)
+
+// Populate from the <select> element after DOM is ready
+
+
+  
+  // State
+  const all = data.map(d => ({ id: Number(d.id), name: d.name, division: d.division }));
+  let selected = new Set(
+    Array.from(selectEl?.options || [])
+      .filter(o => o.selected)
+      .map(o => Number(o.value))
+  );
+
+  // Helpers
+  const isSelected = id => selected.has(id);
+    const syncSelect = () => {
+    if (!selectEl) return;
+    const valSet = new Set([...selected].map(String));
+    Array.from(selectEl.options).forEach(o => (o.selected = valSet.has(o.value)));
+    if (countSummary) countSummary.textContent = `${selected.size} selected`;
+  };
+
+  // NEW: keep selections on form resubmit
+  const formEl = root.closest("form");
+  if (formEl) {
+    formEl.addEventListener("submit", () => {
+      syncSelect();
+    });
+  }
+
+
+
+  const byDivision = items => {
+    const groups = {};
+    items.forEach(c => (groups[c.division] ||= []).push(c));
+    Object.keys(groups).forEach(k => groups[k].sort((a,b) => a.name.localeCompare(b.name)));
+    const order = ["Kindergarten","Primary (Grades 1–4)","Primary (Grades 5–8)","Secondary (Grades 9–12)"];
+    return Object.entries(groups).sort((a,b) => {
+      const ai = order.indexOf(a[0]) === -1 ? 999 : order.indexOf(a[0]);
+      const bi = order.indexOf(b[0]) === -1 ? 999 : order.indexOf(b[0]);
+      return ai - bi;
+    });
+  };
+
+  // UI actions
+  const toggle = id => {
+    if (selected.has(id)) selected.delete(id);
+    else selected.add(id);
+    syncSelect();
+    renderChips();
+    renderList();
+  };
+  const remove = id => {
+    selected.delete(id);
+    syncSelect();
+    renderChips();
+    renderList();
+  };
+  const clearAll = () => {
+    selected.clear();
+    syncSelect();
+    renderChips();
+    renderList();
+  };
+
+  // Render chips
+  function renderChips() {
+    chipsEl.innerHTML = "";
+    if (selected.size === 0) {
+      const hint = document.createElement("p");
+      hint.className = "text-xs text-neutral-500";
+      hint.textContent = "No classes selected.";
+      chipsEl.appendChild(hint);
+      return;
+    }
+    const selectedItems = all.filter(c => selected.has(c.id));
+    byDivision(selectedItems).forEach(([divName, items]) => {
+      items.forEach(c => {
+        const chip = document.createElement("span");
+        chip.className = "inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2.5 py-1 text-xs animate-fadeIn";
+        chip.innerHTML = `<span class="font-medium">${escapeHtml(c.name)}</span>
+                          <button type="button" class="text-blue-600 hover:text-blue-800" aria-label="Remove ${escapeHtml(c.name)}">&times;</button>`;
+        chip.querySelector("button").addEventListener("click", () => remove(c.id));
+        chipsEl.appendChild(chip);
+      });
+    });
+  }
+
+  // Render results list
+  function renderList() {
+    const q = (searchEl.value || "").trim().toLowerCase();
+    let filtered = all.filter(c => c.name.toLowerCase().includes(q) || c.division.toLowerCase().includes(q));
+    if (filtered.length === 0) {
+      resultsEl.innerHTML = `<div class="p-4 text-sm text-neutral-500">No classes match your search.</div>`;
+      return;
+    }
+
+    const grouped = byDivision(filtered).map(([divName, items]) => {
+      items.sort((a,b) => {
+        const as = isSelected(a.id), bs = isSelected(b.id);
+        if (as && !bs) return -1;
+        if (!as && bs) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      return [divName, items];
+    });
+
+    resultsEl.innerHTML = "";
+    grouped.forEach(([divName, items]) => {
+      const header = document.createElement("div");
+      header.className = `px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white bg-gradient-to-r from-primary-500 to-primary-700 animate-pulse-slow`;
+      header.textContent = divName;
+      resultsEl.appendChild(header);
+
+      const maxVisible = q ? items.length : 3; // show only 3 if no search
+      items.slice(0, maxVisible).forEach(c => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.role = "option";
+        row.setAttribute("aria-selected", isSelected(c.id) ? "true" : "false");
+        row.className = "w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-50 focus:outline-none focus:bg-neutral-100 animate-fadeIn";
+        row.innerHTML = `<span class="text-sm text-neutral-800">${escapeHtml(c.name)}</span>
+                         <span class="ml-3 h-5 w-5 inline-flex items-center justify-center rounded ${isSelected(c.id) ? 'bg-blue-600 text-white' : 'border border-neutral-300 text-transparent'}">
+                           <i class="fas fa-check text-[11px]"></i>
+                         </span>`;
+        row.addEventListener("click", () => toggle(c.id));
+        resultsEl.appendChild(row);
+      });
+
+      if (!q && items.length > maxVisible) {
+        const more = document.createElement("div");
+        more.className = "px-3 py-2 text-xs text-primary-600 cursor-pointer hover:underline";
+        more.textContent = `+${items.length - maxVisible} more…`;
+        more.addEventListener("click", () => {
+          items.slice(maxVisible).forEach(c => {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.role = "option";
+            row.setAttribute("aria-selected", isSelected(c.id) ? "true" : "false");
+            row.className = "w-full text-left px-3 py-2 flex items-center justify-between hover:bg-neutral-50 focus:outline-none focus:bg-neutral-100 animate-fadeIn";
+            row.innerHTML = `<span class="text-sm text-neutral-800">${escapeHtml(c.name)}</span>
+                             <span class="ml-3 h-5 w-5 inline-flex items-center justify-center rounded ${isSelected(c.id) ? 'bg-blue-600 text-white' : 'border border-neutral-300 text-transparent'}">
+                               <i class="fas fa-check text-[11px]"></i>
+                             </span>`;
+            row.addEventListener("click", () => toggle(c.id));
+            resultsEl.appendChild(row);
+          });
+          more.remove();
+        });
+        resultsEl.appendChild(more);
+      }
+    });
+  }
+
+  // Utility
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // Events
+  searchEl.addEventListener("input", renderList);
+  searchEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = resultsEl.querySelector('button[role="option"]');
+      if (first) first.click();
+    }
+  });
+  clearBtn?.addEventListener("click", clearAll);
+
+  // Init
+  syncSelect();
+  renderChips();
+  renderList();
+});
+</script>
+<script>
+document.querySelectorAll('.collapsible').forEach(button => {
+  button.addEventListener('click', () => {
+    const content = button.nextElementSibling;
+
+    // Close all panels
+    document.querySelectorAll('.collapsible').forEach(otherBtn => {
+      otherBtn.nextElementSibling.classList.add('hidden');
+    });
+
+    // Open only the clicked one
+    content.classList.remove('hidden');
+  });
+});
+</script>
+
+{%endblock%}
+
+
+

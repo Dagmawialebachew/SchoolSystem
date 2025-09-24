@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% block title %}{{ teacher.full_name }} — Teacher Profile{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-8">
+<div class="flex items-center gap-3 mb-6">
+  <a href="{% url 'teachers:list' %}"
+     class="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition">
+    <i class="fas fa-arrow-left"></i>
+    <span>Back to Teachers</span>
+  </a>
+
+</div>
+
+  <!-- Hero -->
+  <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div class="flex items-center gap-4">
+      <div class="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center shadow-md overflow-hidden">
+        {% if teacher.profile_picture %}
+          <img src="{{ teacher.profile_picture.url }}" alt="{{ teacher.full_name }} profile photo" class="h-full w-full object-cover" />
+        {% else %}
+          <span class="text-xl font-semibold">{{ teacher.first_name|first }}{{ teacher.last_name|first }}</span>
+        {% endif %}
+      </div>
+      <div>
+        
+        <h1 class="text-2xl font-semibold text-neutral-900 tracking-tight">{{ teacher.full_name }}</h1>
+        <div class="mt-1 flex flex-wrap items-center gap-2">
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+            {% if teacher.is_active %}bg-green-50 text-green-700 ring-1 ring-green-100{% else %}bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200{% endif %}">
+            {% if teacher.is_active %}Active{% else %}Inactive{% endif %}
+          </span>
+          {% if teacher.employment_status %}
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-100 capitalize">
+{{ teacher.get_employment_status_display }}          </span>
+          {% endif %}
+          {% if teacher.is_homeroom_teacher %}
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-100">
+            Homeroom
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <a href="{% url 'teachers:edit' teacher.id %}"
+         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 active:scale-[0.99] transition">
+        <i class="fas fa-pen"></i><span>Edit</span>
+      </a>
+      <a href="mailto:{{ teacher.email }}" class="hidden sm:inline-flex items-center gap-2 rounded-lg px-4 py-2 ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+        <i class="fas fa-envelope text-neutral-600"></i><span>Email</span>
+      </a>
+      <a href="tel:{{ teacher.phone }}" class="hidden sm:inline-flex items-center gap-2 rounded-lg px-4 py-2 ring-1 ring-neutral-200 hover:bg-neutral-50 transition">
+        <i class="fas fa-phone text-neutral-600"></i><span>Call</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Grid -->
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Profile card -->
+    <details class="group bg-white rounded-2xl border border-neutral-200 shadow-sm open:shadow-md transition">
+      <summary class="cursor-pointer list-none px-5 py-4 flex items-center justify-between">
+        <span class="font-semibold text-neutral-800 flex items-center gap-2">
+          <i class="fas fa-user text-blue-600"></i> Profile info
+        </span>
+        <i class="fas fa-chevron-down text-neutral-500 group-open:rotate-180 transition"></i>
+      </summary>
+      <div class="px-5 pb-5 pt-0 space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-neutral-500">Email</span>
+          {% if teacher.email %}
+            <span class="font-medium text-neutral-800"><a href="mailto:{{ teacher.email }}" class="hover:underline">{{ teacher.email }}</a></span>
+          {% else %}
+            <span class="text-neutral-400 italic">No email</span>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-neutral-500">Phone</span>
+          {% if teacher.phone %}
+            <span class="font-medium text-neutral-800 flex items-center gap-2">
+              <a href="tel:{{ teacher.phone }}" class="hover:underline">{{ teacher.phone }}</a>
+              <button type="button" data-copy="{{ teacher.phone }}" class="copy-btn text-xs px-2 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200">Copy</button>
+            </span>
+          {% else %}
+            <span class="text-neutral-400 italic">No phone</span>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-neutral-500">Employee ID</span>
+          <span class="font-medium text-neutral-800">{{ teacher.employee_id|default:"—" }}</span>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-neutral-500">Hire date</span>
+          <span class="font-medium text-neutral-800">{{ teacher.hire_date|date:"M d, Y"|default:"—" }}</span>
+        </div>
+
+        <div>
+          <span class="text-neutral-500 block">Bio</span>
+          <p class="mt-1 text-neutral-800 leading-relaxed">{{ teacher.bio|default:"No bio provided." }}</p>
+        </div>
+
+        {% if teacher.address %}
+        <div>
+          <span class="text-neutral-500 block">Address</span>
+          <p class="mt-1 text-neutral-800">{{ teacher.address }}</p>
+        </div>
+        {% endif %}
+
+        {% if teacher.emergency_contact %}
+        <div class="flex items-center justify-between">
+          <span class="text-neutral-500">Emergency contact</span>
+          <span class="font-medium text-neutral-800">{{ teacher.emergency_contact }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </details>
+
+    <!-- Classes & subjects -->
+    <details class="group bg-white rounded-2xl border border-neutral-200 shadow-sm open:shadow-md transition">
+      <summary class="cursor-pointer list-none px-5 py-4 flex items-center justify-between">
+        <span class="font-semibold text-neutral-800 flex items-center gap-2">
+          <i class="fas fa-chalkboard text-blue-600"></i> Classes & subjects
+        </span>
+        <i class="fas fa-chevron-down text-neutral-500 group-open:rotate-180 transition"></i>
+      </summary>
+
+      <div class="px-5 pb-5 pt-0 text-sm space-y-5">
+        <div>
+          <h3 class="text-neutral-700 font-semibold mb-2">Divisions</h3>
+          {% if teacher.divisions %}
+            <ul class="flex flex-wrap gap-2">
+              {% for division in teacher.divisions %}
+                <li class="rounded-full bg-neutral-100 text-neutral-700 px-3 py-1 text-xs ring-1 ring-neutral-200">{{ division.get_name_display }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-neutral-500 italic">Not assigned to any divisions yet.</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <h3 class="text-neutral-700 font-semibold mb-2">Classes</h3>
+          {% if teacher.all_classes %}
+            <ul class="space-y-1">
+              {% for cls in teacher.all_classes %}
+                <li class="flex items-center justify-between gap-3">
+                  <span class="text-neutral-800">{{ cls.name }}</span>
+                  <span class="text-xs rounded-full bg-neutral-100 text-neutral-700 px-2 py-0.5">{{ cls.division.get_name_display }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-neutral-500 italic">Not teaching any classes yet.</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <h3 class="text-neutral-700 font-semibold mb-2">Subjects</h3>
+          {% if teacher.subjects %}
+            <ul class="flex flex-wrap gap-2">
+              {% for subject in teacher.subjects %}
+                <li class="rounded-lg bg-blue-50 text-blue-700 px-2.5 py-1 text-xs ring-1 ring-blue-100">{{ subject.name }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-neutral-500 italic">Not assigned any subjects yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </details>
+
+    <!-- Schedule -->
+    <details class="group bg-white rounded-2xl border border-neutral-200 shadow-sm open:shadow-md transition md:col-span-2">
+      <summary class="cursor-pointer list-none px-5 py-4 flex items-center justify-between">
+        <span class="font-semibold text-neutral-800 flex items-center gap-2">
+          <i class="fas fa-calendar-alt text-blue-600"></i> Schedule
+        </span>
+        <i class="fas fa-chevron-down text-neutral-500 group-open:rotate-180 transition"></i>
+      </summary>
+
+      <div class="px-5 pb-5 pt-0">
+        {% if teacher.schedule %}
+          <div id="schedule-grid" class="overflow-x-auto">
+            <table class="min-w-full text-sm border-separate border-spacing-y-2">
+              <thead>
+                <tr class="text-left text-neutral-500">
+                  <th class="px-3 py-2">Day</th>
+                  <th class="px-3 py-2">Time</th>
+                  <th class="px-3 py-2">Class</th>
+                  <th class="px-3 py-2">Subject</th>
+                </tr>
+              </thead>
+              <tbody id="schedule-body"></tbody>
+            </table>
+          </div>
+          <script id="schedule-data" type="application/json">{{ teacher.schedule|json_script:"schedule" }}</script>
+        {% else %}
+          <p class="text-neutral-500 italic">No schedule available.</p>
+        {% endif %}
+      </div>
+    </details>
+
+    <!-- Documents -->
+    {% if teacher.documents.exists %}
+    <details class="group bg-white rounded-2xl border border-neutral-200 shadow-sm open:shadow-md transition md:col-span-2">
+      <summary class="cursor-pointer list-none px-5 py-4 flex items-center justify-between">
+        <span class="font-semibold text-neutral-800 flex items-center gap-2">
+          <i class="fas fa-file-alt text-blue-600"></i> Documents
+        </span>
+        <i class="fas fa-chevron-down text-neutral-500 group-open:rotate-180 transition"></i>
+      </summary>
+      <div class="px-5 pb-5 pt-0">
+        <ul class="divide-y divide-neutral-100">
+          {% for doc in teacher.documents.all %}
+          <li class="flex items-center justify-between py-3">
+            <div class="min-w-0">
+              <a href="{{ doc.file.url }}" target="_blank" class="text-blue-700 hover:underline font-medium">{{ doc.name }}</a>
+              <div class="text-xs text-neutral-500">{{ doc.uploaded_at|date:"M d, Y" }}</div>
+            </div>
+            <a href="{{ doc.file.url }}" target="_blank" class="rounded-lg px-3 py-1.5 ring-1 ring-neutral-200 hover:bg-neutral-50 text-sm">View</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </details>
+    {% endif %}
+
+  </section>
+</div>
+
+<!-- Micro-interactions -->
+<script>
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const value = btn.getAttribute('data-copy');
+      try {
+        await navigator.clipboard.writeText(value);
+        btn.textContent = 'Copied';
+        btn.classList.add('bg-green-100');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('bg-green-100');
+        }, 1200);
+      } catch(e) {}
+    });
+  });
+
+  // Schedule rendering (expects a JSON like: { monday: [{time:"09:00-10:00", class:"Grade 5A", subject:"Math"}], ... })
+  const script = document.getElementById('schedule-data');
+  if (script) {
+    const data = JSON.parse(document.getElementById('schedule').textContent || '{}');
+    const tbody = document.getElementById('schedule-body');
+    const order = ['monday','tuesday','wednesday','thursday','friday','saturday'];
+    const fmt = s => s.charAt(0).toUpperCase() + s.slice(1);
+    order.forEach(day => {
+      (data[day] || []).forEach(slot => {
+        const tr = document.createElement('tr');
+        tr.className = 'bg-neutral-50 hover:bg-neutral-100 transition';
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-neutral-800">${fmt(day)}</td>
+          <td class="px-3 py-2 text-neutral-700">${slot.time || '—'}</td>
+          <td class="px-3 py-2 text-neutral-700">${slot.class || '—'}</td>
+          <td class="px-3 py-2 text-neutral-700">${slot.subject || '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+    if (!tbody.children.length) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4" class="px-3 py-4 text-neutral-500 italic">No scheduled items.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+</script>
+{% endblock %}
