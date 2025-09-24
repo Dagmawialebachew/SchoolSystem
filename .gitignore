@@ -22,8 +22,7 @@ db.sqlite3
 *.mo
 
 # Media and static files (optional, if you serve media via cloud/CDN or PythonAnywhere static mapping)
-media/
-staticfiles/
+
 
 # Environment variables
 .env
