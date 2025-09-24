@@ -1,23 +1,12 @@
+import json
 from django.shortcuts import render
 from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.contrib import messages
+from classes_app.models import ClassProgram
 from core.mixins import RoleRequiredMixin, SchoolScopedMixin
 from .models import Teacher
 from .forms import TeacherForm
-
-
-class TeacherCreateView(RoleRequiredMixin, SchoolScopedMixin, CreateView):
-    model = Teacher
-    form_class = TeacherForm
-    template_name = 'teachers/teacher_form.html'
-    success_url = reverse_lazy('teachers:list')
-    allowed_roles = ['SCHOOL_ADMIN']
-
-    def form_valid(self, form):
-        form.instance.school = self.request.user.school
-        messages.success(self.request, 'Teacher created successfully!')
-        return super().form_valid(form)
 
 
 class TeacherListView(RoleRequiredMixin, SchoolScopedMixin, ListView):
@@ -38,6 +27,66 @@ class TeacherListView(RoleRequiredMixin, SchoolScopedMixin, ListView):
             )
         return queryset.order_by('last_name', 'first_name')
 
+class TeacherCreateView(RoleRequiredMixin, SchoolScopedMixin, CreateView):
+    model = Teacher
+    form_class = TeacherForm
+    template_name = 'teachers/teacher_form.html'
+    success_url = reverse_lazy('teachers:list')
+    allowed_roles = ['SCHOOL_ADMIN']
+
+    def form_valid(self, form):
+        form.instance.school = self.request.user.school
+        response = super().form_valid(form)
+
+        # Save class assignments
+        selected_classes = form.cleaned_data.get('classes', [])
+        teacher = self.object
+
+        # Remove any assignments not in selected_classes
+        teacher.class_assignments.exclude(class_program__in=selected_classes).delete()
+        
+        # Add new assignments
+        for cls in selected_classes:
+            teacher.class_assignments.get_or_create(
+                class_program=cls,
+                defaults={"teacher": teacher, "is_homeroom_teacher": False, "school": self.request.user.school}
+            )
+        messages.success(self.request, 'Teacher is updated succefully')
+
+        return response
+
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        # Scope classes to this school
+        form.fields['classes'].queryset = ClassProgram.objects.filter(
+            school=self.request.user.school
+        ).select_related('division').order_by('division__name', 'name')
+        return form
+    
+    def form_invalid(self, form):
+        # Loop through all field errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                if field == "__all__":
+                    # Non-field errors
+                    messages.error(self.request, error)
+                else:
+                    messages.error(self.request, f"{form.fields[field].label}: {error}")
+
+        return super().form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # JSON for JS picker
+        classes = ClassProgram.objects.filter(
+            school=self.request.user.school
+        ).select_related('division').order_by('division__name', 'name')
+        context['classes_json'] = json.dumps([
+    {"id": c.id, "name": c.name, "division": c.division.get_name_display()}
+    for c in classes
+])
+        print('here is the contenxt', context['classes_json'])
+        return context
 
 class TeacherUpdateView(RoleRequiredMixin, SchoolScopedMixin, UpdateView):
     model = Teacher
@@ -46,9 +95,67 @@ class TeacherUpdateView(RoleRequiredMixin, SchoolScopedMixin, UpdateView):
     success_url = reverse_lazy('teachers:list')
     allowed_roles = ['SCHOOL_ADMIN']
 
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        form.fields['classes'].queryset = ClassProgram.objects.filter(
+            school=self.request.user.school
+        ).select_related('division').order_by('division__name', 'name')
+        return form
+
     def form_valid(self, form):
-        messages.success(self.request, 'Teacher updated successfully!')
-        return super().form_valid(form)
+        form.instance.school = self.request.user.school
+        response = super().form_valid(form)
+
+        # Save class assignments
+        selected_classes = form.cleaned_data.get('classes', [])
+        teacher = self.object
+
+        # Remove any assignments not in selected_classes
+        teacher.class_assignments.exclude(class_program__in=selected_classes).delete()
+        
+        # Add new assignments
+        for cls in selected_classes:
+            teacher.class_assignments.get_or_create(
+                class_program=cls,
+                defaults={"teacher": teacher, "is_homeroom_teacher": False, "school": self.request.user.school}
+            )
+        messages.success(self.request, 'Teacher is updated succefully')
+
+        return response
+
+    
+    def form_invalid(self, form):
+        # Loop through all field errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                if field == "__all__":
+                    # Non-field errors
+                    messages.error(self.request, error)
+                else:
+                    messages.error(self.request, f"{form.fields[field].label}: {error}")
+
+        return super().form_invalid(form)
+    
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        classes = ClassProgram.objects.filter(
+            school=self.request.user.school
+        ).select_related('division').order_by('division__name', 'name')
+        context['classes_json'] = json.dumps([
+            {"id": c.id, "name": c.name, "division": c.division.get_name_display()}
+            for c in classes
+        ])
+        return context
+
+
+class TeacherDetailView(SchoolScopedMixin, DetailView):
+    model = Teacher
+    template_name = "teachers/teacher_detail.html"
+    context_object_name = "teacher"
+
+    def get_queryset(self):
+        return Teacher.objects.filter(school=self.request.user.school)
 
 
 class TeacherDeleteView(RoleRequiredMixin, SchoolScopedMixin, DeleteView):

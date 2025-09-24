@@ -6,61 +6,59 @@
 
   {% include "partials/_finance_header_tabs.html" %}
 
-
+  <!-- Stats Cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="text-sm font-medium text-neutral-500">Total Revenue</h3>
-      <p id="totalRevenue" class="text-2xl font-bold text-neutral-900 mt-2">0</p>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="text-sm sm:text-base font-medium text-neutral-500">Total Revenue</h3>
+      <p id="totalRevenue" class="text-2xl sm:text-3xl font-bold text-neutral-900 mt-2">0</p>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="text-sm font-medium text-neutral-500">Pending Invoices</h3>
-      <p id="pendingInvoices" class="text-2xl font-bold text-warning-600 mt-2">0</p>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="text-sm sm:text-base font-medium text-neutral-500">Pending Invoices</h3>
+      <p id="pendingInvoices" class="text-2xl sm:text-3xl font-bold text-warning-600 mt-2">0</p>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="text-sm font-medium text-neutral-500">Paid Invoices</h3>
-      <p id="paidInvoices" class="text-2xl font-bold text-success-600 mt-2">0</p>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="text-sm sm:text-base font-medium text-neutral-500">Paid Invoices</h3>
+      <p id="paidInvoices" class="text-2xl sm:text-3xl font-bold text-success-600 mt-2">0</p>
     </div>
-
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="text-sm font-medium text-neutral-500">Total Unpaid</h3>
-      <p id="totalUnpaid" class="text-2xl font-bold text-danger-600 mt-2">0</p>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="text-sm sm:text-base font-medium text-neutral-500">Total Unpaid</h3>
+      <p id="totalUnpaid" class="text-2xl sm:text-3xl font-bold text-danger-600 mt-2">0</p>
     </div>
-
-  
- 
   </div>
 
   <!-- Charts -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="font-semibold text-neutral-800 mb-4">Invoice Status</h3>
-      <div class="h-72"><canvas id="invoiceStatusChart"></canvas></div>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="font-semibold text-neutral-800 mb-4 text-base sm:text-lg">Invoice Status</h3>
+      <div class="w-full h-72 sm:h-80">
+        <canvas id="invoiceStatusChart"></canvas>
+      </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="font-semibold text-neutral-800 mb-4">Monthly Collections</h3>
-      <div class="h-72"><canvas id="monthlyCollectionsChart"></canvas></div>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="font-semibold text-neutral-800 mb-4 text-base sm:text-lg">Monthly Collections</h3>
+      <div class="w-full h-72 sm:h-80">
+        <canvas id="monthlyCollectionsChart"></canvas>
+      </div>
     </div>
-
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="font-semibold text-neutral-800 mb-4">Revenue Trend</h3>
-      <div class="h-72"><canvas id="revenueTrendChart"></canvas></div>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="font-semibold text-neutral-800 mb-4 text-base sm:text-lg">Revenue Trend</h3>
+      <div class="w-full h-72 sm:h-80">
+        <canvas id="revenueTrendChart"></canvas>
+      </div>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-      <h3 class="font-semibold text-neutral-800 mb-4">Students by Division</h3>
-      <div class="h-80"><canvas id="studentsByDivisionChart"></canvas></div>
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6">
+      <h3 class="font-semibold text-neutral-800 mb-4 text-base sm:text-lg">Students by Division</h3>
+      <div class="w-full h-72 sm:h-80">
+        <canvas id="studentsByDivisionChart"></canvas>
+      </div>
     </div>
   </div>
-  </div>
-
-
-
-
 
 {% endblock %}
-  <script src="{% static 'js/dashboard-charts.js' %}"></script>
-  <script src="{% static 'js/chart.min.js' %}"></script> 
+
+<script src="{% static 'js/chart.min.js' %}"></script>
+<script src="{% static 'js/dashboard-charts.js' %}"></script>

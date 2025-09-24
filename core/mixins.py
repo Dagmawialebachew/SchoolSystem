@@ -71,6 +71,3 @@ class ParentScopedMixin:
         
         return queryset
     
-  
-  
-

@@ -1,0 +1,855 @@
+{% load static %}
+{% load django_browser_reload %}
+{% django_browser_reload_script %}
+
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SchoolSystem{% endblock %}</title>
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+      <script src="{% static 'js/chart.min.js' %}"></script> 
+
+
+<link rel="stylesheet" 
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
+      referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+
+<!-- Announcement Bar -->
+<!-- Announcement Bar -->
+<!-- Announcement Bar -->
+<div class="bg-primary-600 text-white text-xs sm:text-sm py-2 px-3 sm:px-4 text-center font-medium">
+  🚀 New: AI Insights just launched —
+  <a href="#features" class="underline hover:text-secondary-200">see what’s new</a>
+</div>
+
+<!-- Navigation -->
+<header id="navbar" class="sticky top-0 z-50 bg-white/90 backdrop-blur-md transition-all duration-300">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-between h-16 sm:h-18 lg:h-20 transition-all duration-300">
+
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2">
+      <img src="{% static 'images/logo.webp' %}" alt="SchoolSaaS logo" class="h-9 sm:h-8 w-auto">
+      <span class="font-bold text-neutral-9
+      00 text-base sm:text-lg font-montserrat">SchoolSaaS</span>
+    </a>
+
+    <!-- Nav Links (desktop) -->
+    <nav class="hidden md:flex items-center gap-6 lg:gap-8 font-poppins text-neutral-700">
+      <a href="#features" class="hover:text-primary-600 transition">Features</a>
+      <a href="#pricing" class="hover:text-primary-600 transition">Pricing</a>
+      <a href="#demo" class="hover:text-primary-600 transition">Demo</a>
+      <a href="#faq" class="hover:text-primary-600 transition">FAQ</a>
+    </nav>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <a href="/" class="hidden sm:inline text-neutral-700 hover:text-primary-600 font-medium">
+        Login
+      </a>
+
+      <!-- Primary CTA -->
+      <a href="tel:+251911234567"
+         class="px-3 sm:px-4 py-2 rounded-lg bg-primary-600 text-white text-sm sm:text-base font-semibold shadow hover:shadow-lg hover:bg-primary-700 transition focus:outline-none focus:ring-2 focus:ring-primary-400">
+        Start Free Trial
+      </a>
+
+      <!-- Mobile menu button -->
+      <button id="menuToggle"
+              class="md:hidden p-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 transition focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              aria-label="Toggle menu" aria-controls="mobileMenu" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div id="mobileMenu" class="md:hidden hidden border-t border-neutral-200 bg-white">
+    <nav class="px-4 sm:px-6 py-3 sm:py-4 space-y-1 sm:space-y-2 font-poppins">
+      <a href="#features" class="block py-2 text-neutral-700 hover:text-primary-600 transition">Features</a>
+      <a href="#pricing" class="block py-2 text-neutral-700 hover:text-primary-600 transition">Pricing</a>
+      <a href="#demo" class="block py-2 text-neutral-700 hover:text-primary-600 transition">Demo</a>
+      <a href="#faq" class="block py-2 text-neutral-700 hover:text-primary-600 transition">FAQ</a>
+      <a href="{% url 'accounts:login' %}" class="block py-2 text-neutral-700 hover:text-primary-600 transition">Login</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Trust Row -->
+<div class="bg-neutral-50 py-3 sm:py-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-neutral-500 text-xs sm:text-sm">
+    <span class="font-medium">Trusted by leading schools across Ethiopia:</span>
+    <!-- <img src="{% static 'images/school1.png' %}" alt="School 1" class="h-5 sm:h-6 opacity-80">
+    <img src="{% static 'images/school2.png' %}" alt="School 2" class="h-5 sm:h-6 opacity-80">
+    <img src="{% static 'images/school3.png' %}" alt="School 3" class="h-5 sm:h-6 opacity-80">
+  </div> -->
+</div>
+
+<script>
+  // Scroll shrink effect (reduce nav height and add shadow when scrolled)
+  const navbar = document.getElementById('navbar');
+  const navInner = navbar.querySelector('div');
+  function onScroll() {
+    const y = window.scrollY || document.documentElement.scrollTop;
+    if (y > 20) {
+      navbar.classList.add('shadow-md');
+      navInner.classList.remove('h-16', 'sm:h-18', 'lg:h-20');
+      navInner.classList.add('h-14', 'sm:h-16', 'lg:h-18');
+    } else {
+      navbar.classList.remove('shadow-md');
+      navInner.classList.remove('h-14', 'sm:h-16', 'lg:h-18');
+      navInner.classList.add('h-16', 'sm:h-18', 'lg:h-20');
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // Mobile menu toggle
+  const menuToggle = document.getElementById('menuToggle');
+  const mobileMenu = document.getElementById('mobileMenu');
+  if (menuToggle && mobileMenu) {
+    menuToggle.addEventListener('click', () => {
+      const isOpen = !mobileMenu.classList.contains('hidden');
+      mobileMenu.classList.toggle('hidden');
+      menuToggle.setAttribute('aria-expanded', String(!isOpen));
+    });
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      window.scrollTo({
+        top: target.offsetTop - 80, // adjust for sticky nav height
+        behavior: 'smooth'
+      });
+    }
+  });
+});
+
+</script>
+
+
+
+
+
+<!-- Hero Section -->
+<section class="relative bg-neutral-50">
+  <div class="max-w-7xl mx-auto px-6 lg:px-12 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center">
+    
+    <!-- Left: Text Content -->
+    <div class="space-y-6">
+      <h1 class="text-4xl lg:text-5xl font-extrabold font-montserrat text-neutral-900 leading-tight">
+        Simplify Your School Operations <br>
+        <span class="text-primary-600">with AI‑Powered Software</span>
+      </h1>
+      
+      <p class="text-lg text-neutral-600 font-poppins max-w-xl">
+        Say goodbye to manual records, late fees, and admin headaches. 
+        Run your school smarter, faster, and stress‑free.
+      </p>
+      
+      <!-- CTA Buttons -->
+    <div class="flex flex-wrap gap-4 pt-4">
+  <a href="tel:+251911234567" 
+     class="px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold shadow hover:bg-primary-700 transition">
+    Book Demo
+  </a>
+  <a href="tel:+251911234567" 
+     class="px-6 py-3 rounded-lg bg-secondary-500 text-white font-semibold shadow hover:bg-secondary-600 transition">
+    Start Free Trial
+  </a>
+</div>
+
+    </div>
+    
+    <!-- Right: Product Mockup -->
+    <div class="relative max-md:mt-10">
+      <div class="rounded-xl shadow-2xl overflow-hidden border border-neutral-200">
+        <img src="{% static 'images/dashboard-laptop.png' %}" alt="Dashboard preview" class="w-full">
+      </div>
+      <div class="absolute -bottom-8 -right-8 max-md:-right-0  w-40 md:w-56 rounded-xl shadow-xl overflow-hidden border border-neutral-200">
+        <img src="{% static 'images/dashboard-mobile.png' %}" alt="Mobile preview" class="w-full">
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+
+
+<!-- 2️⃣ Pain → Solution Section -->
+<section id="pain-solution" class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+
+    <!-- Left: Pain Points -->
+    <div class="space-y-8">
+      <h2 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900">
+        Why Schools Struggle Today
+      </h2>
+      <ul class="space-y-6">
+        <!-- Pain 1 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-accent-100 rounded-full">
+              <!-- Heroicon: Document Duplicate -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 16h8M8 12h8m-6-4h6M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H9l-5 5v11a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Manual record keeping leads to errors, misplaced files, and endless paperwork.
+          </p>
+        </li>
+
+        <!-- Pain 2 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-accent-100 rounded-full">
+              <!-- Heroicon: Cash -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm-5 4h10m-8 4h6m-10 4h14a2 2 0 002-2v-4H5v4a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Late fees and payment tracking bog down staff, leading to cashflow issues.
+          </p>
+        </li>
+
+        <!-- Pain 3 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-accent-100 rounded-full">
+              <!-- Heroicon: Chat Alt 2 -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 8h2a2 2 0 012 2v8l-4-4H7a2 2 0 01-2-2V6a2 2 0 012-2h8m0 0V2m0 6l6 6" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Parents stay uninformed without a dedicated portal for updates and feedback.
+          </p>
+        </li>
+
+        <!-- Pain 4 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-accent-100 rounded-full">
+              <!-- Heroicon: Clock -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Wasted hours on repetitive tasks steal time from teaching and student support.
+          </p>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Right: Solutions -->
+    <div class="space-y-8">
+      <h3 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900">
+        How SchoolSystem Solves It
+      </h3>
+      <ul class="space-y-6">
+        <!-- Solution 1 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-secondary-100 rounded-full">
+              <!-- Heroicon: Database -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 6a9 9 0 00-9 9 9 9 0 0018 0 9 9 0 00-9-9zM12 6v6m0 0l3-3m-3 3l-3-3" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Digitizes student records with secure, cloud-based storage and real-time syncing.
+          </p>
+        </li>
+
+        <!-- Solution 2 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-secondary-100 rounded-full">
+              <!-- Heroicon: Credit Card -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 10h18M3 14h18M6 6h.01M6 18h.01" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Automates fees & payments with reminders, payment links, and instant receipts.
+          </p>
+        </li>
+
+        <!-- Solution 3 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-secondary-100 rounded-full">
+              <!-- Heroicon: Phone -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 5h18M3 19h18M8 9l4 4-4 4" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Built-in parent portal keeps families informed with announcements & direct messaging.
+          </p>
+        </li>
+
+        <!-- Solution 4 -->
+        <li class="flex items-start">
+          <div class="flex-shrink-0">
+            <div class="h-10 w-10 flex items-center justify-center bg-secondary-100 rounded-full">
+              <!-- Heroicon: Clock -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <p class="ml-4 text-neutral-700 leading-relaxed">
+            Saves precious time with one-click reports, automated workflows, and reminders.
+          </p>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- 3️⃣ Core Features Section -->
+<section id="features" class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+
+    <!-- Section Title -->
+    <h2 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900 text-center mb-12">
+      Core Features
+    </h2>
+
+    <!-- Features Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
+      <!-- Feature 1: Student & Parent Management -->
+      <div class="flex flex-col items-center text-center p-6 border border-neutral-200 rounded-lg hover:shadow-lg transition">
+        <div class="text-primary-600 text-4xl mb-4">
+          <i class="fas fa-user-friends"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-neutral-900 mb-2">
+          Student & Parent Management
+        </h3>
+        <p class="text-neutral-600">
+          Centralize profiles, track progress, and engage families—all in one place.
+        </p>
+      </div>
+
+      <!-- Feature 2: Smart Fees & Payments -->
+      <div class="flex flex-col items-center text-center p-6 border border-neutral-200 rounded-lg hover:shadow-lg transition">
+        <div class="text-secondary-500 text-4xl mb-4">
+          <i class="fas fa-credit-card"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-neutral-900 mb-2">
+          Smart Fees & Payments
+        </h3>
+        <p class="text-neutral-600">
+          Automate billing, reminders, and receipts for flawless cashflow.
+        </p>
+      </div>
+
+      <!-- Feature 3: Attendance & Reports -->
+      <div class="flex flex-col items-center text-center p-6 border border-neutral-200 rounded-lg hover:shadow-lg transition">
+        <div class="text-primary-600 text-4xl mb-4">
+          <i class="fas fa-calendar-check"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-neutral-900 mb-2">
+          Attendance & Reports
+        </h3>
+        <p class="text-neutral-600">
+          One-click attendance tracking and instant performance reports.
+        </p>
+      </div>
+
+      <!-- Feature 4: Teacher Tools -->
+      <div class="flex flex-col items-center text-center p-6 border border-neutral-200 rounded-lg hover:shadow-lg transition">
+        <div class="text-secondary-500 text-4xl mb-4">
+          <i class="fas fa-chalkboard-teacher"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-neutral-900 mb-2">
+          Teacher Tools
+        </h3>
+        <p class="text-neutral-600">
+          Plan lessons, grade assignments, and communicate with ease.
+        </p>
+      </div>
+
+      <!-- Feature 5: Parent Portal -->
+      <div class="flex flex-col items-center text-center p-6 border border-neutral-200 rounded-lg hover:shadow-lg transition">
+        <div class="text-primary-600 text-4xl mb-4">
+          <i class="fas fa-mobile-alt"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-neutral-900 mb-2">
+          Parent Portal
+        </h3>
+        <p class="text-neutral-600">
+          Real-time announcements, grades, and messaging on any device.
+        </p>
+      </div>
+
+      <!-- Feature 6: AI Insights -->
+      <div class="flex flex-col items-center text-center p-6 border border-neutral-200 rounded-lg hover:shadow-lg transition">
+        <div class="text-secondary-500 text-4xl mb-4">
+          <i class="fas fa-robot"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-neutral-900 mb-2">
+          AI Insights
+        </h3>
+        <p class="text-neutral-600">
+          Predict trends, set reminders, and spot issues before they arise.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 4️⃣ Demo / Preview Section -->
+<section id="demo" class="py-16 bg-neutral-50">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 text-center">
+    <h2 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900 mb-6">
+      See It In Action
+    </h2>
+
+    <!-- Responsive video / GIF container -->
+    <div class="relative w-full aspect-w-16 aspect-h-9 mb-8 rounded-lg overflow-hidden shadow-lg">
+      <!-- Replace src with your demo video/GIF -->
+      <iframe 
+        src="https://www.youtube.com/embed/VIDEO_ID?rel=0&amp;showinfo=0" 
+        title="SchoolSystem Demo" 
+        class="absolute inset-0 w-full h-full"
+        frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <!-- Secondary CTA -->
+        <a href="tel:+251911234567" 
+       class="inline-block px-6 py-3 bg-secondary-500 text-white font-semibold rounded-lg shadow hover:bg-secondary-600 transition">
+      Book a Live Demo
+    </a>
+  </div>
+</section>
+
+<!-- 5️⃣ Pricing Section -->
+
+<section id="pricing" class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+
+    <!-- Title + Subtitle -->
+    <div class="text-center mb-12">
+      <h2 class="inline-flex items-center justify-center text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900">
+        <i class="fas fa-chart-pie text-primary-600 mr-2"></i>
+        Simple, Transparent Pricing
+      </h2>
+      <p class="mt-4 text-neutral-600 text-base sm:text-lg">
+        Start free → Grow as you go. Setup & training included 
+        <i class="fas fa-check-circle text-success-500 ml-1"></i>
+      </p>
+    </div>
+
+    <!-- Billing Cycle Toggle -->
+    <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-12">
+      <button class="billing-toggle px-4 py-2 rounded-lg bg-primary-600 text-white font-medium focus:outline-none transition"
+              data-months="1" data-discount="0">
+        1 Month
+      </button>
+      <button class="billing-toggle px-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 font-medium hover:bg-neutral-300 focus:outline-none transition"
+              data-months="3" data-discount="0.05">
+        3 Months <span class="text-primary-600 ml-1">(Save 5%)</span>
+      </button>
+      <button class="billing-toggle px-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 font-medium hover:bg-neutral-300 focus:outline-none transition"
+              data-months="6" data-discount="0.10">
+        6 Months <span class="text-primary-600 ml-1">(Save 10%)</span>
+      </button>
+      <button class="billing-toggle px-4 py-2 rounded-lg bg-neutral-200 text-neutral-700 font-medium hover:bg-neutral-300 focus:outline-none transition"
+              data-months="12" data-discount="0.1667">
+        12 Months <span class="text-primary-600 ml-1">(2 Months Free)</span>
+      </button>
+    </div>
+
+    <!-- Plan Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+      <!-- Starter -->
+      <div class="border border-neutral-200 rounded-2xl p-6 text-center hover:shadow-xl hover:-translate-y-1 transition flex flex-col justify-between bg-white" data-plan="starter">
+        <div>
+          <h3 class="text-xl font-semibold text-neutral-900 mb-4">Starter</h3>
+          <div class="text-4xl font-extrabold text-primary-600 mb-2">
+            <span class="price-value">2,999</span>
+            <span class="price-period text-lg font-normal text-neutral-600">/mo</span>
+          </div>
+          <p class="text-neutral-700 mb-6">Perfect for small schools & daycares (up to 100 students).</p>
+          <ul class="text-neutral-700 space-y-2 mb-6 text-left inline-block">
+            <li><i class="fas fa-chalkboard-teacher text-accent-500 mr-2"></i>Student & teacher management</li>
+            <li><i class="fas fa-calendar-check text-accent-500 mr-2"></i>Attendance tracking & parent updates</li>
+            <li><i class="fas fa-money-bill-wave text-accent-500 mr-2"></i>Fee collection & receipts</li>
+            <li><i class="fas fa-file-alt text-accent-500 mr-2"></i>Basic reports</li>
+          </ul>
+        </div>
+        <a href="tel:+251911234567" 
+           class="mt-4 px-4 py-2 rounded-lg bg-primary-600 text-white font-semibold shadow hover:bg-primary-700 transition">
+          Start Free Trial
+        </a>
+      </div>
+
+      <!-- Growth -->
+      <div class="border-2 border-primary-600 bg-primary-50 rounded-2xl p-6 text-center shadow-lg hover:shadow-xl hover:-translate-y-1 transition flex flex-col justify-between relative"
+           data-plan="growth">
+        <div class="absolute top-0 inset-x-0 -mt-3 flex justify-center">
+          <span class="bg-primary-600 text-white text-sm font-semibold px-3 py-1 rounded-full shadow">
+            Most Popular
+          </span>
+        </div>
+        <div>
+          <h3 class="text-xl font-semibold text-neutral-900 mb-4">Growth</h3>
+          <div class="text-4xl font-extrabold text-primary-600 mb-2">
+            <span class="price-value">4,999</span>
+            <span class="price-period text-lg font-normal text-neutral-600">/mo</span>
+          </div>
+          <p class="text-neutral-700 mb-6">For growing schools (100–500 students).</p>
+          <ul class="text-neutral-700 space-y-2 mb-6 text-left inline-block">
+            <li><i class="fas fa-check-circle text-secondary-500 mr-2"></i>Everything in Starter</li>
+            <li><i class="fas fa-file-invoice text-secondary-500 mr-2"></i>Automated invoicing & overdue alerts</li>
+            <li><i class="fas fa-comments text-secondary-500 mr-2"></i>Messaging with parents</li>
+            <li><i class="fas fa-credit-card text-secondary-500 mr-2"></i>Payment integrations</li>
+            <li><i class="fas fa-chart-line text-secondary-500 mr-2"></i>Advanced analytics & insights</li>
+          </ul>
+        </div>
+        <a href="tel:+251911234567" 
+           class="mt-4 px-4 py-2 rounded-lg bg-primary-600 text-white font-semibold shadow hover:bg-primary-700 transition">
+          Start Free Trial
+        </a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="border border-neutral-200 rounded-2xl p-6 text-center hover:shadow-xl hover:-translate-y-1 transition flex flex-col justify-between bg-white"
+           data-plan="enterprise">
+        <div>
+          <h3 class="text-xl font-semibold text-neutral-900 mb-4">Enterprise</h3>
+          <div class="text-4xl font-extrabold text-primary-600 mb-2">
+            <span class="price-value">7,999</span>
+            <span class="price-period text-lg font-normal text-neutral-600">/mo</span>
+          </div>
+          <p class="text-neutral-700 mb-6">For large schools & multi-branch academies.</p>
+          <ul class="text-neutral-700 space-y-2 mb-6 text-left inline-block">
+            <li><i class="fas fa-comments text-accent-500 mr-2"></i>Unlimited messaging to parents/staff</li>
+            <li><i class="fas fa-paint-brush text-accent-500 mr-2"></i>White-label branding</li>
+            <li><i class="fas fa-headset text-accent-500 mr-2"></i>Dedicated support & onboarding</li>
+            <li><i class="fas fa-plug text-accent-500 mr-2"></i>Custom integrations & SLA</li>
+            <li><i class="fas fa-bolt text-accent-500 mr-2"></i>Priority feature requests</li>
+          </ul>
+        </div>
+        <a href="tel:+251911234567" 
+           class="mt-4 px-4 py-2 rounded-lg bg-primary-600 text-white font-semibold shadow hover:bg-primary-700 transition">
+          Contact Sales
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Optional Add-Ons -->
+<div class="border-t border-primary-200 bg-primary-50 rounded-2xl shadow-sm max-w-lg mx-auto pt-6 mt-10 text-center">
+  <h4 class="text-lg font-semibold text-neutral-900 mb-6">
+    Optional Add-Ons
+  </h4>
+  <div class="flex flex-wrap justify-center gap-4 px-4 pb-6">
+    <div class="flex items-center px-4 py-2 rounded-xl bg-white shadow hover:shadow-lg hover:-translate-y-0.5 hover:bg-neutral-50 transition cursor-pointer">
+      <i class="fas fa-credit-card text-secondary-500 mr-2"></i>
+      <span class="text-sm font-medium text-neutral-800">Payment Integrations</span>
+    </div>
+    <div class="flex items-center px-4 py-2 rounded-xl bg-white shadow hover:shadow-lg hover:-translate-y-0.5 hover:bg-neutral-50 transition cursor-pointer">
+      <i class="fas fa-sms text-secondary-500 mr-2"></i>
+      <span class="text-sm font-medium text-neutral-800">EthioTelecom Messaging</span>
+    </div>
+    <div class="flex items-center px-4 py-2 rounded-xl bg-white shadow hover:shadow-lg hover:-translate-y-0.5 hover:bg-neutral-50 transition cursor-pointer">
+      <i class="fas fa-robot text-secondary-500 mr-2"></i>
+      <span class="text-sm font-medium text-neutral-800">AI Insights</span>
+    </div>
+  </div>
+</div>
+
+<!-- Pricing Toggle Script -->
+<script>
+const planBase = { starter: 2999, growth: 4999, enterprise: 7999 };
+const toggles = document.querySelectorAll('.billing-toggle');
+const cards = document.querySelectorAll('[data-plan]');
+
+function formatNumber(n) { return n.toLocaleString(); }
+
+toggles.forEach(btn => {
+  btn.addEventListener('click', () => {
+    toggles.forEach(b => {
+      b.classList.remove('bg-primary-600', 'text-white');
+      b.classList.add('bg-neutral-200', 'text-neutral-700');
+    });
+    btn.classList.add('bg-primary-600', 'text-white');
+    btn.classList.remove('bg-neutral-200', 'text-neutral-700');
+
+    const months = +btn.dataset.months || (btn.textContent.includes('3') ? 3 : btn.textContent.includes('6') ? 6 : btn.textContent.includes('12') ? 12 : 1);
+    const discount = +btn.dataset.discount || (months === 3 ? 0.05 : months === 6 ? 0.10 : months === 12 ? 0.1667 : 0);
+
+    cards.forEach(card => {
+      const plan = card.dataset.plan;
+      const base = planBase[plan];
+      let price, label;
+
+      if (months === 1) {
+        price = base;
+        label = '/mo';
+      } else if (months === 12) {
+        price = Math.round(base * 12 * (1 - discount));
+        label = '/yr';
+      } else {
+        price = Math.round(base * months * (1 - discount));
+        label = `/${months}mo`;
+      }
+
+      card.querySelector('.price-value').textContent = formatNumber(price);
+      card.querySelector('.price-period').textContent = label;
+    });
+  });
+});
+
+if (toggles[0]) toggles[0].click();
+</script>
+
+
+
+<!-- 6️⃣ Testimonials / Social Proof -->
+<section id="testimonials" class="py-16 bg-neutral-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+    <div class="text-center mb-10">
+      <h2 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900">
+        Trusted by schools across Ethiopia
+      </h2>
+      <p class="mt-3 text-neutral-600">Built for real impact — measurable results from day one.</p>
+    </div>
+
+    <!-- Metrics row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+      <div class="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm">
+        <i class="fas fa-clock text-primary-600 text-3xl mb-3"></i>
+        <h3 class="text-2xl font-bold text-neutral-900">
+          <span class="counter" data-target="10">0</span>+
+        </h3>
+        <p class="text-neutral-600">hours saved per week on admin tasks</p>
+      </div>
+      <div class="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm">
+        <i class="fas fa-money-bill-wave text-primary-600 text-3xl mb-3"></i>
+        <h3 class="text-2xl font-bold text-neutral-900">
+          <span class="counter" data-target="40">0</span>%
+        </h3>
+        <p class="text-neutral-600">reduction in missed payments</p>
+      </div>
+      <div class="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm">
+        <i class="fas fa-users text-primary-600 text-3xl mb-3"></i>
+        <h3 class="text-2xl font-bold text-neutral-900">
+          <span class="counter" data-target="100">0</span>%
+        </h3>
+        <p class="text-neutral-600">parents connected via mobile portal</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Counter animation
+  function animateCounter(counter) {
+    const target = +counter.getAttribute('data-target');
+    const duration = 1500; // total animation time in ms
+    const frameRate = 30; // update every 30ms
+    const steps = duration / frameRate;
+    const increment = target / steps;
+    let current = 0;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        current = target;
+        clearInterval(timer);
+      }
+      counter.textContent = Math.floor(current);
+    }, frameRate);
+  }
+
+  // Trigger when section is visible
+  const counters = document.querySelectorAll('.counter');
+  let countersStarted = false;
+
+  function handleScroll() {
+    const section = document.getElementById('testimonials');
+    const rect = section.getBoundingClientRect();
+    if (!countersStarted && rect.top < window.innerHeight && rect.bottom >= 0) {
+      counters.forEach(counter => animateCounter(counter));
+      countersStarted = true;
+    }
+  }
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  // Run once in case already in view
+  handleScroll();
+</script>
+
+
+<!-- 7️⃣ FAQ Section -->
+<section id="faq" class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+    <h2 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-neutral-900 text-center mb-10">
+      Frequently asked questions
+    </h2>
+
+    <div class="max-w-3xl mx-auto space-y-4">
+
+      <!-- 1 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">Can parents use it on their phones?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          Yes. Parents access a mobile-friendly portal for announcements, payments, attendance, and messaging.
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">Do we need special computers?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          No. It’s web-based—works on existing laptops and desktops. For best performance, use modern browsers.
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">How safe is our data?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          Your data is encrypted and backed up regularly. Access is role-based, with audit trails and secure logins.
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">Can we integrate payments and SMS later?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          Yes. Payment integrations, EthioTelecom messaging, and AI Insights are optional add-ons available at any tier.
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">How long does setup and training take?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          Most schools are up and running in less than a week. Setup and training are included free of charge.
+        </div>
+      </div>
+
+      <!-- 6 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">What if our internet goes down?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          The system is cloud-based, but critical features like SMS notifications can still reach parents via EthioTelecom even if your local internet is offline.
+        </div>
+      </div>
+
+      <!-- 7 -->
+      <div class="border border-neutral-200 rounded-lg overflow-hidden">
+        <button class="faq-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100">
+          <span class="text-neutral-900 font-semibold">Can we customize it with our school’s logo and colors?</span>
+          <i class="fas fa-plus text-neutral-600"></i>
+        </button>
+        <div class="faq-content hidden px-4 py-4 text-neutral-700">
+          Yes. Growth and Enterprise plans include branding options so your portal looks and feels like your school.
+        </div>
+      </div>
+
+     
+
+    </div>
+  </div>
+</section>
+
+<script>
+  const faqToggles = document.querySelectorAll('.faq-toggle');
+  faqToggles.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const content = btn.parentElement.querySelector('.faq-content');
+      const icon = btn.querySelector('i');
+      const isOpen = !content.classList.contains('hidden');
+      // Close all
+      document.querySelectorAll('.faq-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.faq-toggle i').forEach(i => i.classList.replace('fa-minus','fa-plus'));
+      // Toggle current
+      content.classList.toggle('hidden', isOpen);
+      icon.classList.replace(isOpen ? 'fa-minus' : 'fa-plus', isOpen ? 'fa-plus' : 'fa-minus');
+    });
+  });
+</script>
+
+
+<!-- 8️⃣ Final CTA Section -->
+<section id="final-cta" class="relative py-16">
+  <div class="absolute inset-0 bg-gradient-to-r from-primary-700 via-primary-600 to-secondary-600"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 text-center">
+    <h2 class="text-3xl sm:text-4xl font-montserrat font-extrabold text-white">
+      Ready to make your school stress‑free?
+    </h2>
+    <p class="mt-3 text-primary-100">
+      Start free today or book a live demo — setup and training included.
+    </p>
+    <div class="mt-8 flex flex-wrap justify-center gap-4">
+      <a href="tel:+251911234567" 
+     class="px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold shadow hover:bg-primary-700 transition">
+    Book Demo
+  </a>
+  <a href="tel:+251911234567" 
+     class="px-6 py-3 rounded-lg bg-secondary-500 text-white font-semibold shadow hover:bg-secondary-600 transition">
+    Start Free Trial
+  </a>
+    </div>
+  </div>
+</section>
+
+
