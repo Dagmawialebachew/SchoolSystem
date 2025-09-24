@@ -346,122 +346,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Collapsible toggle
-  document.querySelectorAll(".collapsible").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const content = btn.nextElementSibling;
-      content.classList.toggle("hidden");
-      const chevron = btn.querySelector(".chevron");
-      chevron.textContent = content.classList.contains("hidden") ? "▼" : "▲";
-    });
-  });
 
-  // Fee total calculation
-  const feeCheckboxes = document.querySelectorAll(".fee-checkbox");
-  const totalFeeDisplay = document.getElementById("total-fee");
-  function updateTotal() {
-    let total = 0;
-    feeCheckboxes.forEach((cb) => {
-      if (cb.checked) total += parseFloat(cb.dataset.amount);
-    });
-    totalFeeDisplay.textContent = total.toFixed(2);
-  }
-  feeCheckboxes.forEach((cb) => cb.addEventListener("change", updateTotal));
-  updateTotal();
-
-  // Show custom months field
-  const billingCycle = document.getElementById("id_billing_cycle");
-  const customField = document.getElementById("custom-months-field");
-  function toggleCustom() {
-    customField.classList.toggle("hidden", billingCycle.value !== "CUSTOM");
-  }
-  billingCycle.addEventListener("change", toggleCustom);
-  toggleCustom();
-
-  // Auto next payment date
-  const startMonth = document.getElementById("start-month");
-  const nextDate = document.getElementById("next-payment-date");
-  billingCycle.addEventListener("change", calcNextDate);
-  startMonth.addEventListener("input", calcNextDate);
-
-  function calcNextDate() {
-    if (!startMonth.value) {
-      nextDate.value = "";
-      return;
-    }
-    const date = new Date(startMonth.value + "-01");
-    if (billingCycle.value === "MONTHLY") date.setMonth(date.getMonth() + 1);
-    if (billingCycle.value === "TERMLY") date.setMonth(date.getMonth() + 4);
-    nextDate.value = date.toLocaleDateString();
-  }
-});
 
 // universal.js
-document.addEventListener("DOMContentLoaded", () => {
-  // ========= COLLAPSIBLE SECTIONS =========
-  // ========= TOTAL FEES CALCULATION =========
-  const feeCheckboxes = document.querySelectorAll(".fee-checkbox");
-  const totalFeesEl = document.getElementById("total-fees");
-  if (feeCheckboxes.length && totalFeesEl) {
-    const updateTotal = () => {
-      let total = 0;
-      feeCheckboxes.forEach((cb) => {
-        if (cb.checked) {
-          const text = cb.parentElement.innerText;
-          const match = text.match(/(\d+(\.\d+)?)/);
-          if (match) total += parseFloat(match[1]);
-        }
-      });
-      totalFeesEl.textContent = `${total.toFixed(2)} birr`;
-    };
-
-    feeCheckboxes.forEach((cb) => cb.addEventListener("change", updateTotal));
-    updateTotal();
-  }
-
-  // ========= CUSTOM MONTHS FIELD TOGGLE =========
-  const billingCycleSelect = document.querySelector("#id_billing_cycle");
-  const customMonthsWrapper = document.getElementById("custom-months-wrapper");
-  if (billingCycleSelect && customMonthsWrapper) {
-    const toggleCustomMonths = () => {
-      if (billingCycleSelect.value === "CUSTOM") {
-        customMonthsWrapper.classList.remove("hidden");
-      } else {
-        customMonthsWrapper.classList.add("hidden");
-      }
-    };
-    billingCycleSelect.addEventListener("change", toggleCustomMonths);
-    toggleCustomMonths();
-  }
-
-  // ========= AUTO NEXT PAYMENT DATE (Future Extension) =========
-  const startMonthInput = document.querySelector("#id_start_billing_month");
-  const cycleInput = document.querySelector("#id_billing_cycle");
-  const nextPaymentPreview = document.getElementById("next-payment-preview");
-
-  if (startMonthInput && cycleInput && nextPaymentPreview) {
-    const calculateNextPayment = () => {
-      const startDate = new Date(startMonthInput.value);
-      if (!isNaN(startDate.getTime())) {
-        let monthsToAdd = 1;
-        if (cycleInput.value === "QUARTERLY") monthsToAdd = 3;
-        if (cycleInput.value === "SEMI_ANNUAL") monthsToAdd = 6;
-        if (cycleInput.value === "ANNUAL") monthsToAdd = 12;
-
-        const nextDate = new Date(startDate);
-        nextDate.setMonth(nextDate.getMonth() + monthsToAdd);
-
-        nextPaymentPreview.textContent = nextDate.toISOString().split("T")[0];
-      } else {
-        nextPaymentPreview.textContent = "N/A";
-      }
-    };
-
-    startMonthInput.addEventListener("change", calculateNextPayment);
-    cycleInput.addEventListener("change", calculateNextPayment);
-  }
-});
 
 
 
@@ -494,3 +381,18 @@ const checkboxes = document.querySelectorAll('.invoice-checkbox');
     updateTotal();
   });
  }
+
+
+  // Save scroll position before leaving/reloading the page
+  window.addEventListener("beforeunload", function() {
+    sessionStorage.setItem("scrollPos", window.scrollY);
+  });
+
+  // Restore scroll position on page load
+  window.addEventListener("load", function() {
+    const scrollPos = sessionStorage.getItem("scrollPos");
+    if (scrollPos) {
+      window.scrollTo(0, parseInt(scrollPos));
+      sessionStorage.removeItem("scrollPos");
+    }
+  });
