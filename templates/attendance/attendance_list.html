@@ -1,30 +1,672 @@
+{# templates/attendance/attendance_list.html #}
 {% extends "base.html" %}
 
-{% block content %}
-<h1 class="text-xl font-bold mb-4">Attendance Records</h1>
+{% block title %}Attendance{% endblock %}
 
-<table class="min-w-full border border-gray-200">
-  <thead>
-    <tr class="bg-gray-100">
-      <th class="px-4 py-2">Student</th>
-      <th class="px-4 py-2">Date</th>
-      <th class="px-4 py-2">Status</th>
-      <th class="px-4 py-2">Marked By</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for record in object_list %}
-      <tr class="border-b">
-        <td class="px-4 py-2">{{ record.student }}</td>
-        <td class="px-4 py-2">{{ record.date }}</td>
-        <td class="px-4 py-2">{{ record.status }}</td>
-        <td class="px-4 py-2">{{ record.marked_by }}</td>
-      </tr>
-    {% empty %}
-      <tr>
-        <td colspan="4" class="text-center p-4">No attendance records found.</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% block content %}
+<div class="">
+  <!-- Header -->
+
+  <div class="flex items-center justify-between mb-4 sm:mb-6">
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-user-check text-primary-600"></i>
+      Attendance
+    </h1>
+    <a href="{% url 'attendance:list' %}" 
+       class="text-xs sm:text-sm font-medium text-neutral-600 hover:text-primary-600 flex items-center gap-1">
+      <i class="fas fa-rotate-right"></i><span class="hidden sm:inline"> Refresh</span>
+    </a>
+  </div>
+  <!-- Tips / Info Bar (Dismissible) -->
+  <div id="tipsBar" class="mb-4 sm:mb-6 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs sm:text-sm text-blue-700 flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-lightbulb text-blue-500"></i>
+      <span>Swipe left = Absent, Swipe right = Present. Use the buttons below for bulk actions.</span>
+    </div>
+    <button onclick="document.getElementById('tipsBar').remove()" 
+            class="text-blue-500 hover:text-blue-700 text-xs font-bold">&times;</button>
+  </div>
+  <!-- Controls -->
+  <div class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-neutral-200 shadow-sm px-3 py-2 sm:px-4 sm:py-3 flex flex-col sm:flex-wrap sm:items-start gap-2 sm:gap-3">
+    
+    <!-- Filter Row -->
+    <div class="flex-1 flex flex-col sm:flex-row gap-2">
+      <div class="relative flex-1">
+        <i class="fas fa-chalkboard-teacher absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm"></i>
+        <select id="classSelect" class="w-full pl-9 rounded-lg border-neutral-300 px-3 py-2 text-sm shadow-sm focus:ring-primary-500 focus:border-primary-500">
+          <option value="">Select class</option>
+          {% for c in classes %}
+            <option value="{{ c.id }}">{{ c.division.name }} — {{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="relative flex-1">
+        <i class="fas fa-calendar-day absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm"></i>
+        <input id="dateInput" type="date" value="{{ today|date:'Y-m-d' }}" class="w-full pl-9 rounded-lg border-neutral-300 px-3 py-2 text-sm shadow-sm focus:ring-primary-500 focus:border-primary-500" />
+      </div>
+      <div class="relative flex-1 sm:max-w-[160px]">
+        <i class="fas fa-clock absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm"></i>
+        <input id="sessionInput" type="text" placeholder="Session" class="w-full pl-9 rounded-lg border-neutral-300 px-3 py-2 text-sm shadow-sm focus:ring-primary-500 focus:border-primary-500" />
+      </div>
+    </div>
+
+    <!-- Action Row -->
+    <div class="flex flex-wrap gap-2 justify-between sm:justify-start">
+      <button id="loadRoster" class="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-sm">
+        <i class="fas fa-sync-alt"></i><span class="hidden sm:inline"> Load</span>
+      </button>
+      <button id="markAllPresent" class="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm">
+        <i class="fas fa-user-check"></i><span class="hidden sm:inline"> All Present</span>
+      </button>
+      <div class="relative flex-1 sm:flex-none">
+        <i class="fas fa-users-cog absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm"></i>
+        <select id="bulkStatusSelect" class="w-full pl-9 rounded-lg border-neutral-300 px-2 py-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+          <option value="">Bulk apply…</option>
+          <option value="PRESENT">Present</option>
+          <option value="ABSENT">Absent</option>
+          <option value="LATE">Late</option>
+          <option value="HALF_DAY">Half Day</option>
+        </select>
+      </div>
+      <a href="{% url 'attendance:attendance_analytics' %}" class="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-sm">
+        <i class="fas fa-chart-line text-indigo-600"></i><span class="hidden sm:inline"> Analytics</span>
+      </a>
+      <label class="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+        <input id="selectAllCheckbox" type="checkbox" class="h-4 w-4 rounded text-primary-600 focus:ring-primary-500">
+        <i class="fas fa-tasks"></i><span class="hidden sm:inline"> Select all</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Roster -->
+  <div id="rosterCard" class="bg-white shadow-sm border border-neutral-200 rounded-2xl overflow-hidden mt-3 sm:mt-6">
+    <div id="rosterHeader" class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white bg-gradient-to-r from-primary-500 to-primary-700">
+      Roster
+    </div>
+    <div id="rosterBody" class="p-4">
+      <div id="rosterEmpty" class="text-sm text-neutral-500 text-center sm:text-left">Choose class and date, then click “Load roster”.</div>
+      <ul id="rosterList" class="divide-y divide-neutral-200 hidden" role="list">
+        <!-- Rows injected via JS -->
+      </ul>
+    </div>
+  </div>
+
+  <!-- Floating Action Bar (Mobile) -->
+  <div class="fixed bottom-4 right-4 flex flex-col gap-2 sm:hidden">
+  <button id="markAllPresentMobile" class="p-4 rounded-full bg-primary-600 shadow-lg text-white hover:bg-primary-700">
+    <i class="fas fa-user-check"></i>
+  </button>
+  <button id="fabAnalytics" class="p-4 rounded-full bg-neutral-800 shadow-lg text-white hover:bg-neutral-900">
+    <i class="fas fa-chart-line"></i>
+  </button>
+</div>
+
+</div>
+<div id="networkStatus" class="fixed top-8 z-[1000] right-4 px-3 py-2 rounded-lg text-sm shadow-md "></div>
+
+
+<style>
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
+.animate-fadeIn { animation: fadeIn 0.25s ease-out; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03);} }
+.animate-pulseOnce { animation: pulse 300ms ease-in-out 1; }
+
+li[data-student-id].selected {
+  background-color: #eef2ff; /* indigo-50 */
+}
+
+.chip { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-width: 1px; border-style: solid; }
+.chip-present { background-color: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.chip-absent { background-color: #fef2f2; color: #7f1d1d; border-color: #fecaca; }
+.chip-late { background-color: #fff7ed; color: #7c2d12; border-color: #fed7aa; }
+.chip-half_day { background-color: #f5f3ff; color: #4c1d95; border-color: #ddd6fe; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+  const statusEl = document.getElementById("networkStatus");
+
+  function updateNetworkStatus() {
+    if (navigator.onLine) {
+      statusEl.textContent = "You are online";
+      statusEl.className = "fixed bottom-16 right-4 px-3 py-2 rounded-lg text-sm shadow-md bg-green-600 text-white";
+      statusEl.classList.remove("hidden");
+      setTimeout(() => statusEl.classList.add("hidden"), 3000);
+
+      // Optionally trigger a sync of offline attendance
+      syncOfflineAttendance();
+    } else {
+      statusEl.textContent = "You are offline ⚠️";
+      statusEl.className = "fixed botom-16 right-4 px-3 py-2 rounded-lg text-sm shadow-md bg-red-600 text-white";
+      statusEl.classList.remove("hidden");
+    }
+  }
+
+  // Initial check
+  updateNetworkStatus();
+
+  // Listen for online/offline events
+  window.addEventListener("online", updateNetworkStatus);
+  window.addEventListener("offline", updateNetworkStatus);
+
+  // Example function to sync offline attendance
+  function syncOfflineAttendance() {
+    // fetch records from IndexedDB (Dexie)
+    // send them to server
+    // then clear synced records
+    console.log("Syncing offline attendance...");
+  }
+});
+
+
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const classSelect = document.getElementById("classSelect");
+  const dateInput = document.getElementById("dateInput");
+  const sessionInput = document.getElementById("sessionInput");
+  const loadBtn = document.getElementById("loadRoster");
+  const markAllBtn = document.getElementById("markAllPresent");
+  const listEl = document.getElementById("rosterList");
+  const emptyEl = document.getElementById("rosterEmpty");
+  const headerEl = document.getElementById("rosterHeader");
+
+const db = new Dexie("AttendanceDB");
+db.version(1).stores({
+    attendance: "++id, student_id, class_id, date, status, synced"
+});
+  
+[classSelect, dateInput, sessionInput].forEach(input => {
+    input.addEventListener("change", () => {
+      if (classSelect.value && dateInput.value) loadRoster();
+    });
+  });
+
+  //floating bars
+
+ document.getElementById("fabAnalytics").addEventListener("click", () => {
+  window.location.href = "#";
+});
+
+//Save dats on load
+  const storageKey = "attendanceFormData";
+
+    // Inputs
+    const studentInputs = document.querySelectorAll("[name^='student-']");
+    
+
+    // Restore saved state
+    const savedData = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    if (savedData) {
+        if (classSelect && savedData.class) classSelect.value = savedData.class;
+        if (dateInput && savedData.date) dateInput.value = savedData.date;
+        if (sessionInput && savedData.session) sessionInput.value = savedData.session;
+
+        // restore student statuses
+        Object.entries(savedData.students || {}).forEach(([id, status]) => {
+            const el = document.querySelector(`[name="student-${id}"]`);
+            if (el) el.value = status;
+        });
+    }
+
+    // Save state
+    function saveData() {
+        const data = {
+            class: classSelect?.value || "",
+            date: dateInput?.value || "",
+            session: sessionInput?.value || "",
+            students: {}
+        };
+        document.querySelectorAll("[name^='student-']").forEach(el => {
+            data.students[el.name.replace("student-", "")] = el.value;
+        });
+        localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    // Watch input changes
+    [classSelect, dateInput, sessionInput, ...studentInputs].forEach(el => {
+        if (el) el.addEventListener("change", saveData);
+    });
+
+    // Bulk actions (mark all, apply selected)
+    function wrapBulkAction(selector) {
+        const btn = document.querySelector(selector);
+        if (btn) {
+            btn.addEventListener("click", () => {
+                setTimeout(saveData, 200); // let UI update first
+            });
+        }
+    }
+    wrapBulkAction("#markAll");
+    wrapBulkAction("#applySelected");
+
+  
+
+  // Optionally, also trigger on page load if values are already set
+  if (classSelect.value && dateInput.value) loadRoster();
+  function setDivisionAccent() {
+    const opt = classSelect.options[classSelect.selectedIndex];
+    const txt = opt ? opt.textContent.toLowerCase() : "";
+    headerEl.className = "px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white";
+    headerEl.classList.add("bg-gradient-to-r","from-primary-500","to-primary-700"); // keep classy default
+    // Customize accents by division name if you want different gradients
+    if (txt.includes("kindergarten")) headerEl.classList.replace("from-primary-500","from-yellow-400"), headerEl.classList.replace("to-primary-700","to-amber-600");
+    else if (txt.includes("grades 1–4")) headerEl.classList.replace("from-primary-500","from-blue-400"), headerEl.classList.replace("to-primary-700","to-blue-700");
+    else if (txt.includes("grades 5–8")) headerEl.classList.replace("from-primary-500","from-green-400"), headerEl.classList.replace("to-primary-700","to-green-700");
+    else headerEl.classList.replace("from-primary-500","from-red-400"), headerEl.classList.replace("to-primary-700","to-red-700");
+  }
+
+  const statuses = [
+    {key: "PRESENT", label: "Present", cls: "chip chip-present"},
+    {key: "ABSENT", label: "Absent", cls: "chip chip-absent"},
+    {key: "LATE", label: "Late", cls: "chip chip-late"},
+    {key: "HALF_DAY", label: "Half Day", cls: "chip chip-half_day"},
+  ];
+
+ // Select All toggle
+document.getElementById("selectAllCheckbox")?.addEventListener("change", (e) => {
+  const checked = e.target.checked;
+  listEl.querySelectorAll(".studentCheckbox").forEach(cb => cb.checked = checked);
+});
+
+// Force uncheck Select All if any change is made in the body
+listEl.addEventListener("change", (e) => {
+  if (!e.target.classList.contains("studentCheckbox")) return;
+  
+  const selectAll = document.getElementById("selectAllCheckbox");
+  if (selectAll) {
+    selectAll.checked = false;  // Always uncheck after any manual change
+  }
+});
+
+
+listEl.addEventListener("change", (e) => {
+  const cb = e.target.closest(".studentCheckbox");
+  if (!cb) return;
+  const row = e.target.closest("li[data-student-id]");
+  if (row) row.classList.toggle("selected", cb.checked);
+});
+
+
+function renderRow(stu) {
+  const li = document.createElement("li");
+  li.className = `
+    flex flex-col sm:flex-row sm:items-center sm:justify-between
+    px-3 py-3 gap-3 animate-fadeIn border-b border-neutral-200
+    bg-white transition-colors duration-200 touch-manipulation
+  `;
+  li.dataset.studentId = stu.id;
+
+  // Left: checkbox + avatar + name
+  const left = document.createElement("div");
+  left.className = "flex items-center gap-3 flex-1 min-w-0"; // min-w-0 helps ellipsis
+  left.innerHTML = `
+    <input 
+      type="checkbox" 
+      class="studentCheckbox h-5 w-5 rounded text-primary-600 focus:ring-2 focus:ring-primary-500 flex-shrink-0" 
+      value="${stu.id}" 
+      aria-label="Select ${escapeHtml(stu.name)}"
+    >
+    <div class="h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 text-sm flex-shrink-0">
+      <i class="fas fa-user"></i>
+    </div>
+    <div class="truncate">
+      <p class="text-sm sm:text-base font-medium text-neutral-900 truncate">${escapeHtml(stu.name)}</p>
+      <p class="text-xs text-neutral-500">ID: ${stu.id}</p>
+    </div>
+  `;
+
+  // Right: status chips + history
+  const right = document.createElement("div");
+  right.className = "flex items-center gap-2 flex-wrap sm:flex-nowrap justify-start sm:justify-end";
+
+  statuses.forEach(s => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `
+      chip ${s.cls} px-3 py-1.5 rounded-full text-xs sm:text-sm
+      transition-all duration-150 active:scale-95
+      ${stu.status === s.key ? "ring-2 ring-primary-400" : "hover:bg-neutral-100"}
+    `;
+    b.innerHTML = `<i class="fas fa-circle-dot text-[10px] mr-1"></i> ${s.label}`;
+    b.setAttribute("aria-pressed", stu.status === s.key ? "true" : "false");
+    b.addEventListener("click", ev => {
+      ev.stopPropagation();
+      setStatus(li, s.key);
+      // Update aria
+      right.querySelectorAll("button").forEach(btn => btn.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+    });
+    right.appendChild(b);
+  });
+
+  const historyBtn = document.createElement("button");
+  historyBtn.className = "ml-1 sm:ml-2 text-neutral-500 hover:text-indigo-600 p-2 rounded-full focus:ring-2 focus:ring-indigo-400";
+  historyBtn.setAttribute("aria-label", `View history for ${escapeHtml(stu.name)}`);
+  historyBtn.innerHTML = `<i class="fas fa-clock-rotate-left"></i>`;
+  historyBtn.addEventListener("click", ev => {
+    ev.stopPropagation();
+    window.location.href = historyUrlFor(stu.id);
+  });
+  right.appendChild(historyBtn);
+
+  li.appendChild(left);
+  li.appendChild(right);
+
+  // Enable swipe gestures (mobile UX)
+  enableSwipe(li);
+
+  li.addEventListener("click", e => {
+    // ignore if clicking on a chip or history button
+    if (e.target.closest("button")) return;
+    const checkbox = li.querySelector(".studentCheckbox");
+    checkbox.checked = !checkbox.checked;
+  });
+
+  return li;
+}
+
+// Build history URL for a student
+function historyUrlFor(studentId) {
+  return "{% url 'attendance:history' 0 %}".replace("0", String(studentId));
+}
+
+// Swipe left/right to mark Absent/Present
+function enableSwipe(row) {
+  let startX = 0, startY = 0, swiping = false;
+
+  row.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    swiping = true;
+  }, { passive: true });
+
+  row.addEventListener("touchend", e => {
+    if (!swiping) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    swiping = false;
+    if (Math.abs(dy) > 40) return; // ignore vertical scrolls
+
+    if (dx > 60) {
+      row.classList.add("bg-green-50");
+      setStatus(row, "PRESENT");
+      setTimeout(() => row.classList.remove("bg-green-50"), 400);
+    } else if (dx < -60) {
+      row.classList.add("bg-red-50");
+      setStatus(row, "ABSENT");
+      setTimeout(() => row.classList.remove("bg-red-50"), 400);
+    }
+  }, { passive: true });
+}
+
+  function setStatus(rowEl, status) {
+    const classId = classSelect.value;
+    const dt = dateInput.value;
+    const session = sessionInput.value || "";
+    const studentId = rowEl.dataset.studentId;
+
+    if (!classId || !dt) { toast("Select class and date first.", "error"); return; }
+
+    rowEl.classList.add("animate-pulseOnce");
+
+    // Check if offline
+    if (!navigator.onLine) {
+        // Save offline in IndexedDB
+        db.attendance.add({
+            student_id: studentId,
+            class_id: classId,
+            date: dt,
+            status: status,
+            synced: false
+        }).then(() => {
+            rowEl.querySelectorAll(".chip").forEach(ch => ch.classList.remove("ring-2","ring-primary-400"));
+            const map = {PRESENT:"Present",ABSENT:"Absent",LATE:"Late",HALF_DAY:"Half Day"};
+            [...rowEl.querySelectorAll(".chip")].find(ch => ch.textContent.includes(map[status]))?.classList.add("ring-2","ring-primary-400");
+            toast("Offline: attendance saved locally", "success");
+        });
+        return;
+    }
+
+    // Online: normal fetch
+    fetch("{% url 'attendance:edit' %}", {
+      method: "POST",
+      headers: {"X-CSRFToken": getCsrf(), "Content-Type": "application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        class_program_id: classId, date: dt, session: session,
+        student_id: studentId, status: status
+      })
+    })
+    .then(r => r.json())
+    .then(() => {
+      rowEl.querySelectorAll(".chip").forEach(ch => ch.classList.remove("ring-2","ring-primary-400"));
+      const map = {PRESENT:"Present",ABSENT:"Absent",LATE:"Late",HALF_DAY:"Half Day"};
+      [...rowEl.querySelectorAll(".chip")].find(ch => ch.textContent.includes(map[status]))?.classList.add("ring-2","ring-primary-400");
+    })
+    .catch(() => toast("Failed to update attendance.", "error"));
+}
+ function markAllPresent() {
+  const classId = classSelect.value;
+  const dt = dateInput.value;
+  const session = sessionInput.value || "";
+  if (!classId || !dt) { toast("Select class and date first.", "error"); return; }
+
+  const ids = [...listEl.querySelectorAll("li")].map(li => li.dataset.studentId);
+  if (ids.length === 0) { toast("Load roster first.", "error"); return; }
+
+  const params = new URLSearchParams();
+  params.append("class_program_id", classId);
+  params.append("date", dt);
+  params.append("session", session);
+  ids.forEach(id => params.append("student_ids", id));  // ✅ append one by one
+
+
+  fetch("{% url 'attendance:bulk_present' %}", {
+    method: "POST",
+    headers: {"X-CSRFToken": getCsrf(), "Content-Type": "application/x-www-form-urlencoded"},
+    body: params
+  })
+  .then(r => r.json())
+  .then(() => {
+    listEl.querySelectorAll("li").forEach(li => {
+      li.querySelectorAll(".chip").forEach(ch => ch.classList.remove("ring-2","ring-primary-400"));
+      [...li.querySelectorAll(".chip")].find(ch => ch.textContent.includes("Present"))?.classList.add("ring-2","ring-primary-400");
+    });
+    toast("All marked present.", "success");
+  })
+  .catch(() => toast("Failed to mark all present.", "error"));
+}
+
+  function loadRoster() {
+    const classId = classSelect.value;
+    const dt = dateInput.value;
+    const session = sessionInput.value || "";
+    setDivisionAccent();
+    if (!classId || !dt) { toast("Select class and date first.", "error"); return; }
+
+    emptyEl.classList.add("hidden");
+    listEl.classList.remove("hidden");
+    listEl.innerHTML = "";
+
+    fetch("{% url 'attendance:roster_api' %}?class_program_id=" + classId + "&date=" + dt + "&session=" + encodeURIComponent(session))
+      .then(r => r.json())
+      .then(students => {
+        if (!students.length) {
+          emptyEl.textContent = "No students found for this class.";
+          emptyEl.classList.remove("hidden");
+          listEl.classList.add("hidden");
+          return;
+        }
+        students.forEach(stu => listEl.appendChild(renderRow(stu)));
+      })
+      .catch(() => {
+        emptyEl.textContent = "Failed to load roster.";
+        emptyEl.classList.remove("hidden");
+        listEl.classList.add("hidden");
+      });
+  }
+
+  
+
+  // Utils
+  function getCsrf() {
+    const name = "csrftoken";
+    const cookies = document.cookie.split(";").map(c => c.trim());
+    for (const c of cookies) {
+      if (c.startsWith(name + "=")) return c.substring(name.length + 1);
+    }
+    return "";
+  }
+
+  const bulkSelectEl = document.getElementById("bulkStatusSelect");
+
+bulkSelectEl.addEventListener("change", () => {  const status = bulkSelectEl.value;
+  const ids = getSelectedStudentIds();
+  const classId = classSelect.value;
+  const dt = dateInput.value;
+  const session = sessionInput.value || "";
+
+  // Basic validation
+  if (!classId || !dt) { 
+    toast("Select class and date first.", "error"); 
+    console.log("Validation failed: class or date missing", { classId, dt });
+    return; 
+  }
+  if (!status) { 
+    toast("Choose a status to apply.", "error"); 
+    console.log("Validation failed: status missing"); 
+    return; 
+  }
+  if (ids.length === 0) { 
+    toast("Select at least one student.", "error"); 
+    console.log("Validation failed: no students selected"); 
+    return; 
+  }
+
+  // Prepare POST data
+  const params = new URLSearchParams();
+  params.append("class_program_id", classId);
+  params.append("date", dt);
+  params.append("session", session);
+  ids.forEach(id => params.append("student_ids", id)); // one by one
+  params.append("status", status);
+
+  console.log("Sending bulk status request:", {
+    url: "{% url 'attendance:bulk_status' %}",
+    body: params.toString()
+  });
+
+  fetch("{% url 'attendance:bulk_status' %}", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCsrf(),
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: params
+  })
+  .then(async r => {
+    if (!r.ok) {
+      const text = await r.text();
+      console.error("Server returned error:", r.status, text);
+      return Promise.reject(text || "Bulk update failed");
+    }
+    return r.json();
+  })
+  .then(data => {
+    console.log("Bulk update successful:", data);
+
+    // Update UI chips
+    ids.forEach(id => {
+      const row = listEl.querySelector(`li[data-student-id="${CSS.escape(String(id))}"]`);
+      if (!row) return;
+      row.querySelectorAll(".chip").forEach(ch => ch.classList.remove("ring-2","ring-primary-400"));
+      const labelMap = {PRESENT:"Present",ABSENT:"Absent",LATE:"Late",HALF_DAY:"Half Day"};
+      [...row.querySelectorAll(".chip")]
+        .find(ch => ch.textContent.includes(labelMap[status]))
+        ?.classList.add("ring-2","ring-primary-400");
+    });
+
+    // Clear selection
+    listEl.querySelectorAll(".studentCheckbox:checked").forEach(cb => cb.checked = false);
+    bulkSelectEl.value = "";
+
+    toast("Bulk status applied.", "success");
+  })
+  .catch(err => {
+    console.error("Bulk status request failed:", err);
+    toast("Failed to apply bulk status.", "error");
+  });
+});
+
+function getSelectedStudentIds() {
+  const selected = [...listEl.querySelectorAll(".studentCheckbox:checked")].map(cb => cb.value);
+  console.log("Selected student IDs:", selected);
+  return selected;
+}
+
+
+  function toast(msg, type="info") {
+    const c = document.createElement("div");
+    c.className = "fixed bottom-4 right-4 px-3 py-2 rounded-lg text-sm shadow-md " +
+      (type==="success" ? "bg-green-600 text-white" : type==="error" ? "bg-red-600 text-white" : "bg-neutral-800 text-white");
+    c.textContent = msg;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 2000);
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // Events
+  loadBtn.addEventListener("click", loadRoster);
+  markAllBtn.addEventListener("click", markAllPresent);
+  document.getElementById("markAllPresentMobile")?.addEventListener("click", markAllPresent);
+
+});
+
+
+async function syncOfflineAttendance() {
+    const pending = await db.attendance.where("synced").equals(false).toArray();
+    for (const rec of pending) {
+        try {
+            const params = new URLSearchParams();
+            params.append("class_program_id", rec.class_id);
+            params.append("date", rec.date);
+            params.append("student_id", rec.student_id);
+            params.append("status", rec.status);
+
+            const res = await fetch("{% url 'attendance:edit' %}", {
+                method: "POST",
+                headers: {"X-CSRFToken": getCsrf(), "Content-Type": "application/x-www-form-urlencoded"},
+                body: params
+            });
+            if (res.ok) {
+                await db.attendance.update(rec.id, { synced: true });
+                console.log("Synced offline record:", rec);
+            }
+        } catch (err) {
+            console.error("Sync failed:", err);
+        }
+    }
+}
+
+// Auto-sync when back online
+window.addEventListener("online", () => {
+  function toast(message, type = "info") {
+  const div = document.createElement("div");
+  div.className = `fixed bottom-4 right-4 px-4 py-2 rounded text-white ${
+    type === "success" ? "bg-green-500" : "bg-red-500"
+  } shadow-lg animate-fadeIn`;
+  div.innerText = message;
+
+  document.body.appendChild(div);
+
+  setTimeout(() => div.remove(), 3000);
+}
+
+    toast("Back online! Syncing offline attendance...", "success");
+    syncOfflineAttendance();
+});
+
+</script>
 {% endblock %}

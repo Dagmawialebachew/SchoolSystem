@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 /* Poppins Font - Local Fallback */
+/* 
 @font-face {
   font-family: 'Poppins';
   font-style: normal;
@@ -27,7 +28,6 @@
        url('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLEj6Z1xlFd2JQEk.woff2') format('woff2');
 }
 
-/* Montserrat Font - Local Fallback */
 @font-face {
   font-family: 'Montserrat';
   font-style: normal;
@@ -42,7 +42,7 @@
   font-weight: 600;
   src: local('Montserrat SemiBold'), local('Montserrat-SemiBold'),
        url('https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm459Wdhyyth.woff2') format('woff2');
-}
+} */
 
 /* Custom components */
 .btn-primary {
@@ -60,6 +60,41 @@
 .form-input {
   @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500;
 }
+
+.label { @apply block  text-sm font-semibold text-neutral-700 mb-2; }
+.input {
+  @apply w-full rounded-lg border border-neutral-300 bg-white
+         px-3 py-2 text-sm text-neutral-900
+         focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm;
+}
+/* Buttons */
+.btn-primary { @apply px-5 py-2 rounded-lg text-sm font-semibold bg-primary-600 text-white shadow-md hover:bg-primary-700 transition; }
+.btn-secondary { @apply px-4 py-2 rounded-lg text-sm font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition; }
+
+/* Step chips */
+.step-chip { @apply inline-flex cursor-pointer items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-200 text-neutral-800; }
+.step-active { @apply bg-primary-100 text-primary-700 border border-primary-300; }
+
+/* Priority badges */
+.badge-info { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300; }
+.badge-important { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300; }
+.badge-urgent { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-300; }
+.badge-muted { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 border border-neutral-300; }
+
+/* Delivery pills */
+.pill { @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm border shadow-sm transition; }
+.pill-dash { @apply bg-indigo-50 text-indigo-700 border-indigo-200; }
+.pill-email { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+.pill-sms { @apply bg-amber-50 text-amber-800 border-amber-200; }
+.pill-push { @apply bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200; }
+.pill-active { @apply ring-2 ring-offset-1 ring-primary-500; }
+
+/* Preview chips (read-only badges) */
+.chip { @apply inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-semibold border; }
+.chip-dash { @apply bg-indigo-100 text-indigo-800 border-indigo-300; }
+.chip-email { @apply bg-emerald-100 text-emerald-800 border-emerald-300; }
+.chip-sms { @apply bg-amber-100 text-amber-900 border-amber-300; }
+.chip-push { @apply bg-fuchsia-100 text-fuchsia-800 border-fuchsia-300; }
 
 .form-checkbox {
   @apply rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500;
@@ -85,3 +120,51 @@
     animation: pulseSlow 2s ease-in-out infinite;
   }
 }
+
+.status-pill {
+  @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium transition;
+}
+.status-pill:hover { @apply bg-opacity-80; }
+.card {
+  @apply bg-white border rounded-lg p-4 shadow-sm flex flex-col text-center;
+}
+
+/* Subtle fade-in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Pulse for action confirmations */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+.animate-pulseOnce {
+  animation: pulse 300ms ease-in-out 1;
+}
+
+/* Division accent colors (match your Tailwind theme) */
+.div-kindergarten { background: linear-gradient(90deg, #fde68a, #f59e0b); }
+.div-primary-1-4 { background: linear-gradient(90deg, #93c5fd, #3b82f6); }
+.div-primary-5-8 { background: linear-gradient(90deg, #86efac, #22c55e); }
+.div-secondary-9-12 { background: linear-gradient(90deg, #fca5a5, #ef4444); }
+
+/* Chip styles */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.chip-present { background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.chip-absent { background-color: #fef2f2; color: #7f1d1d; border: 1px solid #fecaca; }
+.chip-late { background-color: #fff7ed; color: #7c2d12; border: 1px solid #fed7aa; }
+.chip-excused { background-color: #f5f3ff; color: #4c1d95; border: 1px solid #ddd6fe; }
+.chip-online { background-color: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; }

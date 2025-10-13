@@ -64,6 +64,17 @@ class ClassProgramForm(TailwindModelForm):
         if teachers.count() > 2:
             raise forms.ValidationError("You can only select up to 2 homeroom teachers.")
         return teachers
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        division = cleaned_data.get('division')
+        name = cleaned_data.get('name')
+        print(name, division)
+
+        if ClassProgram.objects.filter(division=division, name=name).exists():
+            raise forms.ValidationError("A class program with this Division, and Name already exists.")
+
+        return cleaned_data
 
     def save(self, commit=True, *args, **kwargs):
         instance = super().save(commit=commit)
@@ -81,3 +92,45 @@ class ClassProgramForm(TailwindModelForm):
 
     
    
+
+class DivisionForm(forms.ModelForm):
+    class Meta:
+        model = Division
+        fields = ["name", "description", "in_progress"]
+        widgets = {
+            "description": forms.Textarea(attrs={"class": "textarea", "rows": 3, "placeholder": "Optional notes"}),
+            "in_progress": forms.CheckboxInput(attrs={"class": "checkbox"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        if "name" in self.fields:
+            # Start with all existing divisions for the school
+            school_divisions = Division.objects.filter(school=getattr(self.user, "school", None))
+            choices = [(d.name, d.name) for d in school_divisions]
+
+            # Include the current instance if editing
+            if self.instance.pk and self.instance.name not in dict(choices):
+                choices.append((self.instance.name, self.instance.name))
+
+            # Dynamically add the submitted value if it's not in choices
+            if self.data.get("name") and self.data.get("name") not in dict(choices):
+                choices.append((self.data.get("name"), self.data.get("name")))
+
+            self.fields["name"].choices = choices
+
+    def clean(self):
+        cleaned = super().clean()
+        name = cleaned.get("name")
+        school = getattr(self.user, "school", None)
+        if not school:
+            raise forms.ValidationError("No associated school found for this user.")
+
+        qs = Division.objects.filter(school=school, name=name)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            self.add_error("name", "A division with this name already exists for your school.")
+        return cleaned

@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+{% block title %}{{ child.full_name }} — Fees{% endblock %}
+{% load humanize %}
+
+{% block content %}
+<div class="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+
+  <!-- Tip Banner -->
+  <div class="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
+    Tip: You can pay a single invoice using the "Pay Now" button or select multiple invoices using the checkboxes and click "Pay Selected".
+  </div>
+
+  <!-- Child Header -->
+  <div class="flex items-start justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="text-2xl font-bold text-neutral-900 truncate" title="{{ child.full_name }}">{{ child.full_name }}</h1>
+      <p class="text-sm text-neutral-600 mt-1 truncate">{{ child.class_program.name }} • {{ child.division.name }}</p>
+
+      <div class="mt-2 flex flex-wrap gap-2 text-xs">
+        {% if summary.total_balance > 0 %}
+        <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2 py-1 rounded-full">Balance: {{ summary.total_balance|intcomma }} Br</span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full">No outstanding fees</span>
+        {% endif %}
+        <span class="inline-flex items-center gap-1 bg-neutral-100 text-neutral-700 px-2 py-1 rounded-full">Invoices: {{ invoices|length }}</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="{% url 'parents:fees' %}" class="text-neutral-600 text-sm hover:underline">← Back to Fees</a>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div>
+    <div class="flex justify-between border-b border-neutral-200">
+      <button data-tab="fees" class="tab-btn px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-600">Invoices</button>
+      <button data-tab="history" class="tab-btn px-4 py-2 text-sm font-medium text-neutral-600">Payment History</button>
+    </div>
+
+    <!-- Invoice Tab -->
+    <div id="tab-fees" class="tab-content mt-4">
+      <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <form id="invoice-form" class="space-y-4">
+          
+          <!-- Header Row -->
+          <div class="flex items-center justify-between pt-2 pb-3 border-b border-neutral-100">
+            <label class="text-sm text-neutral-600 flex items-center gap-2 font-medium">
+              <input type="checkbox" id="selectAllChild" class="h-4 w-4 rounded border-neutral-300 text-primary-600"> Select all unpaid
+            </label>
+            <div class="text-sm text-neutral-600 font-medium">Amount Due</div>
+          </div>
+
+          <!-- Invoice List -->
+          <div class="space-y-3">
+            {% for inv in invoices %}
+            {% with inv.amount_due|add:0 as amount_due %}
+            <div class="invoice-row flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-lg border border-neutral-100 p-3 transition hover:bg-neutral-50" data-amount-due="{{ amount_due }}">
+              
+              <!-- Left: Checkbox + Info -->
+              <div class="flex items-start sm:items-center gap-3 min-w-0 flex-grow">
+                {% if inv.status != 'PAID' %}
+                <input type="checkbox" name="invoice_ids" value="{{ inv.id }}" class="invoice-checkbox h-5 w-5 rounded border-neutral-300 text-primary-600 mt-1 sm:mt-0 flex-shrink-0">
+                {% else %}
+                <div class="h-5 w-5 mt-1 sm:mt-0 flex-shrink-0"></div>
+                {% endif %}
+                <div class="min-w-0 flex flex-col">
+                  <div class="font-medium text-neutral-900 truncate" title="{% if inv.fee %}{{ inv.fee.get_name_display }}{% else %}{{ inv.description }}{% endif %}">
+                    {% if inv.fee %}{{ inv.fee.get_name_display }}{% elif inv.description %}{{ inv.description }}{% else %}Invoice{% endif %}
+                  </div>
+                  <div class="text-xs text-neutral-500 mt-1 sm:mt-0.5">
+                    Due: {{ inv.due_date }}{% if inv.note %} • {{ inv.note }}{% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Amount + Status + Pay -->
+              <div class="flex flex-col sm:items-end gap-2 min-w-[140px] mt-2 sm:mt-0">
+                <div class="flex flex-row justify-between gap-2">
+                  <div class="font-semibold text-neutral-900">{{ inv.amount_due|intcomma }} Br</div>
+                  <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full
+                        {% if inv.status == 'PAID' %}bg-emerald-50 text-emerald-700
+                        {% elif inv.status == 'PARTIAL' %}bg-amber-50 text-amber-700
+                        {% else %}bg-red-50 text-red-700{% endif %}" 
+                        title="Status: {{ inv.get_status_display }}">
+                    {{ inv.get_status_display }}
+                  </span>
+                </div>
+
+                {% if inv.status != 'PAID' %}
+                <button type="button" class="pay-now-btn max-w-[6rem] mt-2 px-4 py-1 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium whitespace-nowrap"
+                        data-invoice-id="{{ inv.id }}" data-amount="{{ amount_due }}" 
+                        title="Pay this invoice now">
+                    Pay Now
+                </button>
+                {% endif %}
+              </div>
+
+            </div>
+            {% endwith %}
+            {% empty %}
+            <p class="text-center text-neutral-500 italic py-4">No invoices for this student.</p>
+            {% endfor %}
+          </div>
+
+          <!-- Mobile Tip -->
+          <div class="sm:hidden mt-2 p-2 bg-yellow-50 text-yellow-800 rounded-lg text-xs text-center font-medium">
+            Tip: Tap "Pay Now" for a single invoice or select multiple using the checkboxes to pay together.
+          </div>
+
+          <!-- Floating Pay Selected -->
+          <button type="button" id="pay-selected-btn" class="fixed bottom-32 right-6 z-40 px-6 py-3 rounded-xl bg-primary-600 text-white shadow-xl hover:bg-primary-700 transition font-bold text-sm sm:text-base hidden">
+            Pay Selected (0 Br)
+          </button>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- Payment History Tab -->
+    <div id="tab-history" class="tab-content mt-4 hidden">
+      <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h3 class="font-semibold text-neutral-900 mb-2 text-lg sm:text-xl">Payment History</h3>
+        <p class="text-sm text-neutral-600 mb-3">Recent payments for this student (most recent first).</p>
+
+        <ul class="divide-y divide-neutral-100 text-sm">
+          {% for p in payments %}
+          <li class="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-2 sm:px-4 transition hover:bg-neutral-50 rounded-lg">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 min-w-0 flex-grow">
+              <div class="font-bold text-base text-primary-700 truncate">{{ p.amount|intcomma }} Br</div>
+              <div class="text-xs text-neutral-600 mt-1 sm:mt-0 truncate">
+                Ref: <strong>{{ p.reference|default:"N/A" }}</strong> 
+                {% if p.mobile_provider %}| {{ p.mobile_provider }}{% endif %}
+                <span class="text-neutral-400 hidden sm:inline">|</span> 
+                {{ p.method|default:"Unknown Method" }}
+              </div>
+              <div class="text-[11px] text-neutral-500 mt-1 sm:mt-0 truncate">
+                Paid on: {{ p.paid_on|date:"M d, Y H:i" }}
+                {% if p.invoice.description %}<span class="text-neutral-400 hidden sm:inline">|</span> For: {{ p.invoice.description|truncatechars:30 }}{% endif %}
+              </div>
+            </div>
+
+            <div class="flex-shrink-0 mt-2 sm:mt-0 text-right">
+              {% if p.is_reversed %}
+              <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                <i class="fas fa-undo"></i> Reversed
+              </span>
+              {% elif p.status == 'PENDING' %} 
+              <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                <i class="fas fa-hourglass-half"></i> Pending
+              </span>
+              {% elif p.status == 'UNCONFIRMED' %} 
+              <span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                <i class="fas fa-question-circle"></i> Unconfirmed
+              </span>
+              {% elif p.status == 'REJECTED' %} 
+              <span class="px-3 py-1 rounded-full bg-danger-100 text-danger-800 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                <i class="fas fa-question-circle"></i> Rejected
+              </span>
+              {% elif p.status == 'CONFIRMED' %}
+              <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                <i class="fas fa-check-circle"></i> Confirmed
+              </span>
+              {% endif %}
+            </div>
+          </li>
+          {% empty %}
+          <li class="py-6 text-center text-neutral-500 italic">No payment history found for this student.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="payment-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4 transition-opacity duration-300">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+    <h3 class="text-xl font-bold text-neutral-900 border-b pb-3">Confirm Payment</h3>
+    
+    <div class="space-y-2 text-sm text-neutral-700 max-h-48 overflow-y-auto border-b pb-3">
+      <h4 class="font-semibold text-neutral-900">Items to Pay:</h4>
+      <div id="selected-invoices" class="space-y-1"></div>
+    </div>
+    <div class="flex justify-between text-lg font-bold text-neutral-900 pt-1">
+      <span>Payment Total</span><span id="payment-total">0 Br</span>
+    </div>
+
+    <form id="payment-details-form" class="space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="invoice_ids" id="modal-invoice-ids">
+      <input type="hidden" name="amount" id="modal-payment-amount">
+
+      <div>
+        <label for="id_method" class="block text-sm font-medium text-neutral-700 mb-1">Payment Method</label>
+        <select name="method" id="id_method" required class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+          <option value="Bank Transfer">Bank Transfer</option>
+          <option value="Mobile Money">Mobile Money (M-Pesa, Tele Birr, etc.)</option>
+          <option value="Online">Online Payment (Recommended)</option>
+
+        </select>
+      </div>
+
+      <div id="bank-receipt-wrapper" class="hidden">
+        <label for="id_receipt_file" class="block text-sm font-medium text-neutral-700 mb-1">Upload bank receipt (screenshot)</label>
+        <input type="file" name="receipt_file" id="id_receipt_file" accept="image/*,.pdf" class="w-full">
+        <p class="text-xs text-neutral-500 mt-1">Upload bank transfer proof. School will review and confirm.</p>
+      </div>
+
+      <div id="mobile-provider-wrapper" class="hidden">
+        <label for="id_mobile_provider" class="block text-sm font-medium text-neutral-700 mb-1">Mobile Provider</label>
+        <select name="mobile_provider" id="id_mobile_provider" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+          <option value="">Select provider</option>
+          <option value="M-Pesa">M-Pesa</option>
+          <option value="Tele Birr">Tele Birr</option>
+          <option value="HelloCash">HelloCash</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="id_reference" class="block text-sm font-medium text-neutral-700 mb-1">Reference / Trans. ID (optional)</label>
+        <input type="text" name="reference" id="id_reference" placeholder="e.g., Bank Ref 12345, MPesa TSKL..." class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+      </div>
+
+      <div>
+        <label for="id_receipt_type" class="block text-sm font-medium text-neutral-700 mb-1">Receipt Preference</label>
+        <select name="receipt_type" id="id_receipt_type" class="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+          <option value="single">Single receipt for all invoices</option>
+          <option value="separate">Separate receipt for each invoice</option>
+          <option value="none">No receipt needed</option>
+        </select>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-3">
+        <button type="button" id="cancel-payment" class="px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition">Cancel</button>
+        <button type="submit" id="submit-payment" class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition">Complete Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- JS: logic only (keeps UI intact) -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // --- Elements ---
+  const tabs = document.querySelectorAll(".tab-btn");
+  const contents = document.querySelectorAll(".tab-content");
+  const selectAllChild = document.getElementById("selectAllChild");
+  const invoiceCheckboxes = document.querySelectorAll(".invoice-checkbox");
+  const paySelectedBtn = document.getElementById("pay-selected-btn");
+  const modal = document.getElementById("payment-modal");
+  const listDiv = document.getElementById("selected-invoices");
+  const totalSpan = document.getElementById("payment-total");
+  const modalInvoiceIds = document.getElementById("modal-invoice-ids");
+  const modalPaymentAmount = document.getElementById("modal-payment-amount");
+  const paymentDetailsForm = document.getElementById("payment-details-form");
+  const payNowButtons = document.querySelectorAll(".pay-now-btn");
+  const methodSelect = document.getElementById("id_method");
+  const mobileProviderWrapper = document.getElementById("mobile-provider-wrapper");
+  const mobileProviderSelect = document.getElementById("id_mobile_provider");
+  const bankReceiptWrapper = document.getElementById("bank-receipt-wrapper");
+  const receiptFileInput = document.getElementById("id_receipt_file");
+  const referenceInput = document.getElementById("id_reference");
+
+  // --- Helpers ---
+  function parseBrToFloat(str) { return parseFloat(String(str).replace(/[^0-9.-]/g, '')) || 0; }
+  function showWarning(msg) {
+    let warn = document.getElementById("payment-warning");
+    if (!warn) {
+      warn = document.createElement("div");
+      warn.id = "payment-warning";
+      warn.className = "fixed top-4 right-4 bg-yellow-100 border-l-4 border-yellow-400 text-yellow-700 px-4 py-3 shadow-md z-50";
+      document.body.appendChild(warn);
+    }
+    warn.innerText = msg;
+    warn.classList.remove("hidden");
+    setTimeout(() => { warn.classList.add("hidden"); }, 4000);
+  }
+  function updateFloatingButton() {
+    let total = 0;
+    const checked = document.querySelectorAll(".invoice-checkbox:checked");
+    checked.forEach(cb => {
+      const row = cb.closest(".invoice-row");
+      if (row) total += parseBrToFloat(row.dataset.amountDue);
+    });
+    if (checked.length) {
+      paySelectedBtn.innerText = `Pay Selected (${total.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})} Br)`;
+      paySelectedBtn.classList.remove("hidden");
+    } else paySelectedBtn.classList.add("hidden");
+  }
+  function openPaymentModal(invoices) {
+    listDiv.innerHTML = "";
+    let total = 0; const ids = [];
+    invoices.forEach(inv => {
+      total += inv.amount; ids.push(inv.id);
+      listDiv.insertAdjacentHTML("beforeend", `<div class="flex justify-between"><span>${inv.label}</span><span class="font-semibold text-neutral-900">${inv.amount.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})} Br</span></div>`);
+    });
+    totalSpan.innerText = total.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + " Br";
+    modalInvoiceIds.value = ids.join(','); modalPaymentAmount.value = total.toFixed(2);
+    modal.classList.remove("hidden"); modal.classList.add("flex");
+  }
+
+  // --- Tabs ---
+  function activateTab(name) {
+    tabs.forEach(b => {
+      b.classList.toggle("text-primary-600", b.dataset.tab === name);
+      b.classList.toggle("border-b-2", b.dataset.tab === name);
+      b.classList.toggle("border-primary-600", b.dataset.tab === name);
+      b.classList.toggle("text-neutral-600", b.dataset.tab !== name);
+    });
+    contents.forEach(c => c.classList.toggle("hidden", c.id !== "tab-"+name));
+    localStorage.setItem("childFeesTab", name);
+  }
+  tabs.forEach(btn => btn.addEventListener("click", () => activateTab(btn.dataset.tab)));
+  activateTab(localStorage.getItem("childFeesTab") || "fees");
+
+  // --- Checkbox Logic ---
+  invoiceCheckboxes.forEach(cb => cb.addEventListener("change", updateFloatingButton));
+  if (selectAllChild) {
+    selectAllChild.addEventListener("change", () => {
+      invoiceCheckboxes.forEach(cb => { if (!cb.disabled) cb.checked = selectAllChild.checked; });
+      updateFloatingButton();
+    });
+  }
+  updateFloatingButton();
+
+  // --- Pay Selected ---
+  if (paySelectedBtn) {
+    paySelectedBtn.addEventListener("click", () => {
+      const selected = Array.from(document.querySelectorAll(".invoice-checkbox:checked")).map(cb => ({
+        id: cb.value,
+        label: cb.closest(".invoice-row").querySelector(".font-medium").innerText,
+        amount: parseBrToFloat(cb.closest(".invoice-row").dataset.amountDue)
+      }));
+      if (selected.length) openPaymentModal(selected);
+    });
+  }
+
+  // --- Pay Now Buttons ---
+  payNowButtons.forEach(btn => btn.addEventListener("click", () => {
+    const inv = [{id: btn.dataset.invoiceId, label: btn.closest(".invoice-row").querySelector(".font-medium").innerText, amount: parseBrToFloat(btn.dataset.amount)}];
+    openPaymentModal(inv);
+  }));
+
+  // --- Modal Cancel ---
+  document.getElementById("cancel-payment")?.addEventListener("click", () => modal.classList.add("hidden"));
+
+  // --- Method Select Dynamic ---
+  function setMethodUI(method) {
+    // show/hide mobile provider selector
+    if (method === 'Mobile Money') {
+      mobileProviderWrapper.classList.remove('hidden');
+    } else {
+      mobileProviderWrapper.classList.add('hidden');
+    }
+
+    // show/hide bank receipt
+    if (method === 'Bank Transfer') {
+      bankReceiptWrapper.classList.remove('hidden');
+      receiptFileInput.required = true;
+    } else {
+      bankReceiptWrapper.classList.add('hidden');
+      receiptFileInput.required = false;
+    }
+
+    // reference is OPTIONAL for all methods now (per your request)
+    referenceInput.required = false;
+  }
+
+  // initial
+  setMethodUI(methodSelect.value);
+
+  methodSelect.addEventListener('change', () => {
+    setMethodUI(methodSelect.value);
+  });
+
+  // --- Mobile provider choice: provider-specific redirect (Tele Birr / M-Pesa)
+  mobileProviderSelect?.addEventListener('change', () => {
+    const prov = (mobileProviderSelect.value || '').trim();
+    // treat several provider name variants
+    const provKey = prov.toUpperCase().replace(/[-\s]/g, '');
+    const redirectProviders = ['TELEBIRR','MPESA','MPESA']; // TELEBIRR, MPESA
+    if (!prov) return;
+
+    if (redirectProviders.includes(provKey)) {
+      // Build redirect URL to your server endpoint which will create provider session / link
+      // Endpoint should accept provider, amount, invoice_ids and return/handle provider flow.
+      const amount = modalPaymentAmount.value || '';
+      const invoiceIds = modalInvoiceIds.value || '';
+      // include a return_url so provider can send user back to your site after payment
+      const returnUrl = encodeURIComponent(window.location.href); // current page as return
+      const providerParam = encodeURIComponent(prov);
+      const url = `/payments/provider_redirect/?provider=${providerParam}&amount=${encodeURIComponent(amount)}&invoice_ids=${encodeURIComponent(invoiceIds)}&return_url=${returnUrl}`;
+      // redirect the user to provider flow
+      window.location.href = url;
+    } else {
+      // other provider (e.g., "HelloCash" or "Other") — just keep modal open and let parent optionally enter reference
+    }
+  });
+
+  // --- Payment Submission ---
+  paymentDetailsForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formEl = paymentDetailsForm;
+    const method = methodSelect.value;
+    const isBank = method === 'Bank Transfer';
+    const isMobile = method === 'Mobile Money';
+
+    const modalInvoiceIdsVal = modalInvoiceIds.value; // comma separated
+    const amountVal = modalPaymentAmount.value;
+
+    // Validation:
+    if (isMobile && mobileProviderSelect && !mobileProviderSelect.value) {
+      return showWarning('Please choose a mobile provider or use the provider redirect (e.g., Tele Birr).');
+    }
+    if (isBank && !receiptFileInput.files.length) {
+      return showWarning('Please upload the bank receipt screenshot.');
+    }
+
+    const isOnline = method === 'Online';
+
+if ((isOnline) && !referenceInput.value.trim()) {
+    return showWarning('Reference / Transaction ID is required for this payment method.');
+}
+
+    // If mobile provider has redirect provider (TeleBirr / MPesa) user would have been redirected earlier.
+    // Decide whether to send multipart (FormData) or JSON:
+    const useFormData = isBank || (receiptFileInput && receiptFileInput.files.length > 0);
+    let fetchOpts = { method: 'POST', headers: {}, body: null };
+
+    if (useFormData) {
+      const fd = new FormData(formEl);
+      fd.set('invoice_ids', modalInvoiceIdsVal);
+      fd.set('amount', amountVal);
+      // mobile provider included if selected
+      if (mobileProviderSelect && mobileProviderSelect.value) fd.set('mobile_provider', mobileProviderSelect.value);
+      fetchOpts.body = fd;
+      // don't set Content-Type; browser handles multipart boundary
+      fetchOpts.headers['X-CSRFToken'] = formEl.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    } else {
+      // send JSON
+      const body = {
+        invoice_ids: modalInvoiceIdsVal.split(',').map(x => x.trim()).filter(Boolean),
+        amount: amountVal,
+        method: method,
+        reference: referenceInput.value.trim() || '',
+        receipt_type: document.getElementById('id_receipt_type').value,
+        mobile_provider: mobileProviderSelect ? mobileProviderSelect.value : ''
+      };
+      fetchOpts.body = JSON.stringify(body);
+      fetchOpts.headers['Content-Type'] = 'application/json';
+      fetchOpts.headers['X-CSRFToken'] = formEl.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    }
+
+    try {
+      const resp = await fetch("{% url 'parents:process_payment' child.id %}", fetchOpts);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.message || 'Payment failed');
+      modal.classList.add("hidden");
+      showWarning(data.note || 'Payment recorded. ' + (data.reference ? 'Ref: ' + data.reference : ''));
+      setTimeout(()=> window.location.reload(), 1000);
+    } catch(err) {
+      showWarning('Payment Error: ' + (err.message || err));
+    }
+  });
+
+});
+</script>
+{% endblock %}

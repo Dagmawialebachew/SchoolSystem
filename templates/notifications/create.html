@@ -1,13 +1,384 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Announcement - SchoolSystem{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow">
-  <h2 class="text-xl font-semibold mb-4">Create Announcement</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-      Publish
-    </button>
-  </form>
+<div class="max-w-3xl mx-auto mt-10">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-bullhorn text-primary-600"></i>
+      {% if form.instance.pk %} Edit Announcement {% else %} New Announcement {% endif %}
+    </h1>
+    <a href="{% url 'notifications:list' %}"
+       class="text-sm font-medium text-neutral-600 hover:text-primary-600 transition">
+      <i class="fas fa-arrow-left mr-1"></i> Back
+    </a>
+  </div>
+
+  <!-- Wizard card -->
+  <div class="bg-white shadow-md rounded-2xl border border-neutral-200 overflow-hidden">
+    <form method="post" enctype="multipart/form-data" id="announcementForm">
+      {% csrf_token %}
+
+      <!-- Step indicators with vibrant badges -->
+<div class="flex flex-wrap items-center gap-2 px-6 py-4 border-b bg-neutral-50">
+        <span class="step-chip step-active" data-step="1">
+          <i class="fas fa-pencil-alt"></i> Compose
+        </span>
+        <i class="fas fa-angle-right text-neutral-400"></i>
+        <span class="step-chip" data-step="2">
+          <i class="fas fa-user-friends"></i> Audience
+        </span>
+        <i class="fas fa-angle-right text-neutral-400"></i>
+        <span class="step-chip" data-step="3">
+          <i class="fas fa-paper-plane"></i> Delivery
+        </span>
+        <i class="fas fa-angle-right text-neutral-400"></i>
+        <span class="step-chip" data-step="4">
+          <i class="fas fa-eye"></i> Preview
+        </span>
+      </div>
+
+      <!-- STEP 1: Compose -->
+      <div class="step-content p-6" data-step="1">
+        <label class="label">Title *</label>
+        {{ form.title|add_class:"input mb-4" }}
+
+        <label class="label">Message *</label>
+        {{ form.message|add_class:"input mb-4" }}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="label">Category</label>
+            {{ form.category|add_class:"input" }}
+          </div>
+          <div>
+            <label class="label">Priority</label>
+            <div class="flex items-center gap-2">
+              {{ form.priority|add_class:"input" }}
+              <!-- live priority badge -->
+              <span id="priorityBadge" class="badge-info">Info</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 mt-4">
+          {{ form.pinned }}
+          <label class="text-sm font-medium text-neutral-700">Pin this announcement</label>
+        </div>
+      </div>
+
+      <!-- Step 2: Audience -->
+<div class="step-content hidden p-6" data-step="2">
+  <label class="label">Target Audience</label>
+  {{ form.target|add_class:"input mb-4" }}
+
+  <!-- Division field -->
+  <div id="divisionField" class="hidden">
+    <label class="label">Divisions (required if target = DIVISION)</label>
+    <div class="relative">
+      <div id="divisionSelector"
+           class="border rounded-lg p-2 flex flex-wrap gap-2 bg-white min-h-[42px] cursor-text">
+        <!-- Chips will be injected here -->
+        <input type="text" id="divisionSearch" placeholder="Search divisions..."
+               class="flex-1 min-w-[120px] outline-none text-sm px-2 py-1">
+      </div>
+      <!-- Suggestion dropdown -->
+      <div id="divisionDropdown"
+           class="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"></div>
+    </div>
+    {{ form.division }} <!-- hidden select multiple -->
+  </div>
+
+  <!-- Classes field -->
+  <div id="classField" class="hidden">
+    <label class="label">Classes (required if target = CLASS)</label>
+    <div class="relative">
+      <div id="classSelector"
+           class="border rounded-lg p-2 flex flex-wrap gap-2 bg-white min-h-[42px] cursor-text">
+        <!-- Chips will be injected here -->
+        <input type="text" id="classSearch" placeholder="Search classes..."
+               class="flex-1 min-w-[120px] outline-none text-sm px-2 py-1">
+      </div>
+      <!-- Suggestion dropdown -->
+      <div id="classDropdown"
+           class="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto hidden"></div>
+    </div>
+    {{ form.classes }} <!-- hidden select multiple -->
+  </div>
 </div>
+
+
+
+      <!-- STEP 3: Delivery & schedule -->
+      <div class="step-content hidden p-6" data-step="3">
+        <label class="label">Delivery channels (Click to select)</label>
+
+        <!-- Color-coded pill toggles synced with checkboxes -->
+        <div class="flex flex-wrap gap-2 mb-2" id="deliveryPills">
+          <button type="button" class="pill pill-dash" data-value="DASH"><i class="fas fa-bell"></i> In‑app</button>
+          <button type="button" class="pill pill-email" data-value="EMAIL"><i class="fas fa-envelope"></i> Email</button>
+          <button type="button" class="pill pill-sms" data-value="SMS"><i class="fas fa-sms"></i> SMS</button>
+          <button type="button" class="pill pill-push" data-value="PUSH"><i class="fas fa-mobile-alt"></i> Push</button>
+        </div>
+
+        <!-- Original checkboxes (hidden, for form submission) -->
+        <div class="hidden">
+          {% for val,label in form.fields.delivery_channels.choices %}
+            <label>
+              <input type="checkbox" name="delivery_channels" value="{{ val }}"
+                     {% if form.instance.pk and val in form.instance.delivery_channels %}checked{% elif val in form.initial.delivery_channels %}checked{% endif %}>
+              {{ label }}
+            </label>
+          {% endfor %}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label class="label">Publish at</label>
+            {{ form.publish_at|add_class:"input" }}
+          </div>
+          <div>
+            <label class="label">Expires at</label>
+            {{ form.expires_at|add_class:"input" }}
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: Media & preview -->
+      <div class="step-content hidden p-6" data-step="4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label class="label">Link (optional)</label>
+            {{ form.links|add_class:"input" }}
+          </div>
+          <div>
+            <label class="label">Video URL (optional)</label>
+            {{ form.videos|add_class:"input" }}
+          </div>
+          <div class="md:col-span-2">
+            <label class="label">Attachments</label>
+            {{ form.attachments }}
+          </div>
+        </div>
+
+        <!-- Live preview card -->
+        <div class="rounded-xl border bg-neutral-50 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold text-lg">Preview</h2>
+            <span id="previewPriority" class="badge-info">Info</span>
+          </div>
+          <p class="text-sm text-neutral-600 mb-1">Category: <span id="previewCategory" class="badge-muted">General</span></p>
+          <h3 class="text-xl font-bold text-neutral-900" id="previewTitle">[Title]</h3>
+          <p class="text-neutral-700 mt-2" id="previewMessage">[Message will appear here]</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="chip chip-dash hidden" id="prevDash"><i class="fas fa-bell"></i> In‑app</span>
+            <span class="chip chip-email hidden" id="prevEmail"><i class="fas fa-envelope"></i> Email</span>
+            <span class="chip chip-sms hidden" id="prevSms"><i class="fas fa-sms"></i> SMS</span>
+            <span class="chip chip-push hidden" id="prevPush"><i class="fas fa-mobile-alt"></i> Push</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer controls -->
+      <div class="flex justify-between px-6 py-4 bg-neutral-50 border-t">
+        <button type="button" id="prevBtn" class="btn-secondary hidden">
+          <i class="fas fa-arrow-left mr-1"></i> Back
+        </button>
+        <div class="flex gap-2">
+          <button type="button" id="nextBtn" class="btn-primary">
+            Next <i class="fas fa-arrow-right ml-1"></i>
+          </button>
+          <button type="submit" id="submitBtn" class="btn-primary hidden">
+            {% if form.instance.pk %}Update{% else %}Publish{% endif %}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function initChipSelector(wrapperId, searchId, selectId, dropdownId) {
+  const wrapper = document.getElementById(wrapperId);
+  const search = document.getElementById(searchId);
+  const select = document.getElementById(selectId);
+  const dropdown = document.getElementById(dropdownId);
+
+  function addChip(option) {
+  if (option.selected) return; // prevent duplicates
+  // Create    
+    const chip = document.createElement("span");
+    chip.className = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700";
+    chip.textContent = option.text;
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.innerHTML = "&times;";
+    removeBtn.className = "ml-1 text-primary-500 hover:text-primary-700";
+    removeBtn.onclick = () => {
+      chip.remove();
+      option.selected = false;
+    };
+    chip.appendChild(removeBtn);
+    wrapper.insertBefore(chip, search);
+  }
+
+  function renderDropdown(term) {
+    dropdown.innerHTML = "";
+    const matches = Array.from(select.options).filter(opt =>
+      !opt.selected && opt.text.toLowerCase().includes(term.toLowerCase())
+    );
+    if (matches.length === 0) {
+      dropdown.classList.add("hidden");
+      return;
+    }
+    matches.forEach(opt => {
+      const item = document.createElement("div");
+      item.className = "px-3 py-2 z-92 hover:bg-primary-50 cursor-pointer text-sm";
+      item.textContent = opt.text;
+      item.onclick = () => {
+  addChip(opt);
+  opt.selected = true;
+  search.value = "";
+  dropdown.classList.add("hidden");
+  search.focus();
+};
+      dropdown.appendChild(item);
+    });
+    dropdown.classList.remove("hidden");
+  }
+
+  search.addEventListener("input", () => {
+    const term = search.value.trim();
+    if (term.length > 0) {
+      renderDropdown(term);
+    } else {
+      dropdown.classList.add("hidden");
+    }
+  });
+
+  // Hide dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!wrapper.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.add("hidden");
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initChipSelector("classSelector", "classSearch", "id_classes", "classDropdown");
+  initChipSelector("divisionSelector", "divisionSearch", "id_division", "divisionDropdown");
+
+const targetEl = document.getElementById("id_target");
+const classField = document.getElementById("classField");
+const divisionField = document.getElementById("divisionField");
+
+function toggleAudienceFields() {
+  if (!targetEl) return;
+  const val = targetEl.value;
+  classField.classList.toggle("hidden", val !== "CLASS");
+  divisionField.classList.toggle("hidden", val !== "DIVISION");
+}
+
+// run once on load
+toggleAudienceFields();
+
+// run whenever target changes
+if (targetEl) {
+  targetEl.addEventListener("change", toggleAudienceFields);
+}
+});
+</script>
+
+<!-- Wizard + UX JS -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  let currentStep = 1;
+  const steps = document.querySelectorAll(".step-content");
+  const chips = document.querySelectorAll(".step-chip");
+  const nextBtn = document.getElementById("nextBtn");
+  const prevBtn = document.getElementById("prevBtn");
+  const submitBtn = document.getElementById("submitBtn");
+
+  function setActiveStep(step) {
+    steps.forEach(s => s.classList.add("hidden"));
+    chips.forEach(c => c.classList.remove("step-active"));
+    document.querySelector(`.step-content[data-step="${step}"]`).classList.remove("hidden");
+    document.querySelector(`.step-chip[data-step="${step}"]`).classList.add("step-active");
+
+    prevBtn.classList.toggle("hidden", step === 1);
+    nextBtn.classList.toggle("hidden", step === steps.length);
+    submitBtn.classList.toggle("hidden", step !== steps.length);
+    currentStep = step;
+  }
+
+  chips.forEach(c => c.addEventListener("click", () => setActiveStep(parseInt(c.dataset.step, 10))));
+  nextBtn.addEventListener("click", () => setActiveStep(Math.min(currentStep + 1, steps.length)));
+  prevBtn.addEventListener("click", () => setActiveStep(Math.max(currentStep - 1, 1)));
+
+  // Target-dependent class field
+ 
+  // Live preview bindings
+  const titleEl = document.getElementById("id_title");
+  const messageEl = document.getElementById("id_message");
+  const categoryEl = document.getElementById("id_category");
+  const priorityEl = document.getElementById("id_priority");
+  function setText(id, val, fallback) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = (val && val.trim()) ? val : fallback;
+  }
+  if (titleEl) titleEl.addEventListener("input", () => setText("previewTitle", titleEl.value, "[Title]"));
+  if (messageEl) messageEl.addEventListener("input", () => setText("previewMessage", messageEl.value, "[Message will appear here]"));
+  function updateCategoryBadge() {
+    const v = categoryEl ? categoryEl.options[categoryEl.selectedIndex].text : "General";
+    setText("previewCategory", v, "General");
+  }
+  function updatePriorityBadges() {
+    const v = priorityEl ? priorityEl.value : "INFO";
+    const map = { "INFO": "badge-info", "IMPORTANT": "badge-important", "URGENT": "badge-urgent" };
+    const labelMap = { "INFO": "Info", "IMPORTANT": "Important", "URGENT": "Urgent" };
+    const pb = document.getElementById("priorityBadge");
+    const pp = document.getElementById("previewPriority");
+    if (pb) pb.className = map[v]; if (pb) pb.textContent = labelMap[v];
+    if (pp) pp.className = map[v]; if (pp) pp.textContent = labelMap[v];
+  }
+  if (categoryEl) { updateCategoryBadge(); categoryEl.addEventListener("change", updateCategoryBadge); }
+  if (priorityEl) { updatePriorityBadges(); priorityEl.addEventListener("change", updatePriorityBadges); }
+
+  // Delivery pills sync with hidden checkboxes + preview chips
+  const pillContainer = document.getElementById("deliveryPills");
+  const previewChips = {
+    "DASH": document.getElementById("prevDash"),
+    "EMAIL": document.getElementById("prevEmail"),
+    "SMS": document.getElementById("prevSms"),
+    "PUSH": document.getElementById("prevPush")
+  };
+  function syncPillsFromCheckboxes() {
+    // ensure pills reflect initial checked state
+    document.querySelectorAll('input[name="delivery_channels"]').forEach(cb => {
+      const pill = pillContainer.querySelector(`[data-value="${cb.value}"]`);
+      if (pill && cb.checked) pill.classList.add("pill-active");
+      if (previewChips[cb.value]) previewChips[cb.value].classList.toggle("hidden", !cb.checked);
+    });
+  }
+  function toggleChannel(value) {
+    const cb = document.querySelector(`input[name="delivery_channels"][value="${value}"]`);
+    const pill = pillContainer.querySelector(`[data-value="${value}"]`);
+    if (!cb || !pill) return;
+    cb.checked = !cb.checked;
+    pill.classList.toggle("pill-active", cb.checked);
+    if (previewChips[value]) previewChips[value].classList.toggle("hidden", !cb.checked);
+  }
+  pillContainer.querySelectorAll(".pill").forEach(p => p.addEventListener("click", () => toggleChannel(p.dataset.value)));
+  syncPillsFromCheckboxes();
+
+  // Initialize
+  setActiveStep(1);
+});
+</script>
+
+
 {% endblock %}

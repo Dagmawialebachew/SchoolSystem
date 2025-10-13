@@ -1,5 +1,6 @@
 # classes_app/models.py
 from django.db import models
+from SchoolSystem import settings
 from core.models import SchoolOwnedModel
 
 class ClassProgramQuerySet(models.QuerySet):
@@ -112,3 +113,58 @@ class ClassSubjectAssignment(SchoolOwnedModel):
 
     def __str__(self):
         return f"{self.class_program} - {self.subject} ({self.teacher or 'Unassigned'})"
+
+
+
+# classes_app/models.py
+from django.db import models
+from core.models import SchoolOwnedModel
+
+class Session(SchoolOwnedModel):
+    """
+    Represents a period or session in a class timetable.
+    E.g., "Period 1", "Math", "08:00 - 08:45"
+    """
+    class_program = models.ForeignKey(
+        "ClassProgram",
+        on_delete=models.CASCADE,
+        related_name="sessions"
+    )
+    name = models.CharField(max_length=100, help_text="E.g., Period 1, Math, or 08:00 - 08:45")
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("class_program", "name")
+        ordering = ["class_program", "start_time"]
+
+    def __str__(self):
+        return f"{self.class_program.name} - {self.name}"
+    
+    
+
+class DivisionLog(models.Model):
+    ACTION_CHOICES = [
+        ("CREATE", "Created"),
+        ("UPDATE", "Updated"),
+        ("DELETE", "Deleted"),
+    ]
+
+    division = models.ForeignKey("Division", on_delete=models.CASCADE, related_name="logs")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="division_logs"
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    changes = models.TextField(blank=True, null=True)  # JSON or plain text diff
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.division.name} - {self.action} by {self.actor or 'System'} at {self.timestamp:%Y-%m-%d %H:%M}"

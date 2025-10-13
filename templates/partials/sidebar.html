@@ -1,5 +1,6 @@
 <!-- Sidebar Wrapper -->
 <div class="relative">
+
   <!-- Mobile overlay -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 hidden z-40 md:hidden"></div>
 
@@ -19,27 +20,44 @@
         <!-- Dashboard -->
         <li>
           <a href="{% url 'dashboard:dashboard' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'dashboard' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-tachometer-alt w-5 mr-3 text-primary-500"></i>
             Dashboard
           </a>
         </li>
 
+        {% if user.is_super_admin %}
         <!-- Schools -->
-        {% if user.is_super_admin%}
         <li>
           <a href="{% url 'schools:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'schools:list' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-school w-5 mr-3 text-primary-500"></i>
             Schools
           </a>
         </li>
         {% endif %}
 
+        <!-- Classes -->
+        <li>
+          <a href="{% url 'classes_app:division_list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'division_list' %}bg-primary-100 text-primary-700{% endif %}">
+            <i class="fas fa-building w-5 mr-3 text-primary-500"></i>
+            Divisions
+          </a>
+        </li>
+
+        <li>
+          <a href="{% url 'classes_app:list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'classes_app:list' %}bg-primary-100 text-primary-700{% endif %}">
+            <i class="fas fa-book-open w-5 mr-3 text-primary-500"></i>
+            Classes
+          </a>
+        </li>
+
         <!-- Students -->
         <li>
           <a href="{% url 'students:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'students:list' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-user-graduate w-5 mr-3 text-primary-500"></i>
             Students
           </a>
@@ -48,25 +66,16 @@
         <!-- Teachers -->
         <li>
           <a href="{% url 'teachers:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'teachers:list' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-chalkboard-teacher w-5 mr-3 text-primary-500"></i>
             Teachers
-          </a>
-        </li>
-
-        <!-- Classes -->
-        <li>
-          <a href="{% url 'classes_app:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
-            <i class="fas fa-book-open w-5 mr-3 text-primary-500"></i>
-            Classes
           </a>
         </li>
 
         <!-- Attendance -->
         <li>
           <a href="{% url 'attendance:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'attendance:list' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-calendar-check w-5 mr-3 text-primary-500"></i>
             Attendance
           </a>
@@ -75,52 +84,90 @@
         <!-- Fees -->
         <li>
           <a href="{% url 'fees:fee-dashboard' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'fee-dashboard' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-credit-card w-5 mr-3 text-primary-500"></i>
             Fees
           </a>
         </li>
 
-        <!-- Documents -->
         <li>
-          <a href="{% url 'documents:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
-            <i class="fas fa-file-alt w-5 mr-3 text-primary-500"></i>
-            Documents
+          <a href="{% url 'fees:unconfirmed_payments_list' %}"
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'unconfirmed_payments_list' %}bg-primary-100 text-primary-700{% endif %}">
+            <i class="fas fa-exclamation-circle w-5 mr-3 text-primary-500"></i>
+            Unconfirmed
+            <span id="unconfirmed-badge" class="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs rounded-full bg-red-600 text-white">
+              <!-- JS will populate -->
+            </span>
           </a>
         </li>
 
         <!-- Notifications -->
         <li>
           <a href="{% url 'notifications:list' %}"
-             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700">
+             class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700 {% if request.resolver_match.url_name == 'notifications:list' %}bg-primary-100 text-primary-700{% endif %}">
             <i class="fas fa-bell w-5 mr-3 text-primary-500"></i>
-            Notifications
+            <span class="flex-1">Notifications</span>
+            <span id="notifBadge"
+                  class="ml-auto hidden inline-flex items-center justify-center min-w-[1.25rem] h-5 px-2 text-xs font-semibold rounded-full bg-red-600 text-white">
+              {{ unread_announcements_count|default:0 }}
+            </span>
           </a>
         </li>
+
       </ul>
     </nav>
   </aside>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 shadow-inner md:hidden z-50">
+    <ul class="flex justify-around items-center">
+      <!-- keep all bottom nav items exactly as is -->
+      {% include 'partials/bottom_nav_items.html' %}
+    </ul>
+  </nav>
 </div>
 
-<!-- Font Awesome (Free CDN) -->
+<!-- Unified Sidebar Toggle Script -->
 
 
-<!-- Sidebar Toggle Script -->
+<!-- Badges Script (unchanged) -->
 <script>
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebar-overlay");
-  const sidebarToggle = document.getElementById("mobile-menu-button"); // from navbar
+  (function() {
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    function updateBadge(count) {
+      if (count && count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+    async function refreshUnread() {
+      try {
+        const res = await fetch("{% url 'notifications:unread_count' %}", { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        updateBadge(data.count || 0);
+      } catch (e) {}
+    }
+    const initial = parseInt(badge.textContent, 10);
+    updateBadge(isNaN(initial) ? 0 : initial);
+    refreshUnread();
+    setInterval(refreshUnread, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshUnread(); });
+  })();
+</script>
 
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener("click", () => {
-      sidebar.classList.toggle("-translate-x-full");
-      overlay.classList.toggle("hidden");
-    });
-  }
-
-  overlay.addEventListener("click", () => {
-    sidebar.classList.add("-translate-x-full");
-    overlay.classList.add("hidden");
-  });
+<script>
+async function refreshUnconfirmedCount() {
+  try {
+    const r = await fetch("{% url 'fees:api-unconfirmed-payments-count' %}");
+    const json = await r.json();
+    const el = document.getElementById('unconfirmed-badge');
+    if (el) el.innerText = json.count || 0;
+  } catch(e) { console.error(e); }
+}
+refreshUnconfirmedCount();
+setInterval(refreshUnconfirmedCount, 30000);
 </script>

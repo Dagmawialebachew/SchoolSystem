@@ -24,7 +24,7 @@
 </form>
 
 <!-- Table -->
-<<div class="overflow-hidden text-sm bg-white shadow-sm rounded-2xl border border-gray-100">
+<div class="overflow-hidden text-sm bg-white shadow-sm rounded-2xl border border-gray-100">
   <table class="min-w-full table table-hover">
     <thead class="bg-gray-50">
       <tr>
@@ -45,7 +45,7 @@
         <td class="px-6 py-4">{{ student.payments_count }}</td>
         <td class="px-6 py-4">{{ student.last_payment|date:"Y-m-d" }}</td>
         <td class="px-6 py-4 text-right">
-          <a href="{% url 'fees:invoice_detail' student.pk %}" class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100">View</a>
+          <a href="{% url 'fees:payment_detail' student.pk %}" class="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100">View</a>
         </td>
       </tr>
       {% empty %}

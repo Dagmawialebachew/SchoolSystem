@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ division.name }} - Division - SchoolSystem{% endblock %}
+
+{% block content %}
+  <!-- Breadcrumbs -->
+<div class="flex items-center gap-2 text-sm text-neutral-500 mb-4">
+  <a href="{% url 'classes_app:division_list' %}" class="hover:text-primary-600">
+    <i class="fas fa-layer-group mr-1"></i> Divisions
+  </a>
+  <span>/</span>
+  <span class="text-neutral-700">{{ division.get_name_display|default:division.name }}</span>
+</div>
+
+<!-- Header / Hero (mirrors class detail style) -->
+<div class="bg-white border border-neutral-200 rounded-2xl shadow-md p-6 md:p-8 mb-6">
+  <div class="flex items-start flex-wrap justify-between gap-4">
+    <div>
+      <h1 class="text-2xl max-md:text-xl font-bold text-neutral-900 flex items-center gap-3">
+        <i class="fas fa-layer-group text-primary-600"></i>
+        {{ division.get_name_display|default:division.name }}
+      </h1>
+
+      <div class="mt-2 flex flex-wrap items-center gap-2">
+        <!-- Type badge -->
+        {% if division.name in general_keys %}
+          <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-100 px-2.5 py-1 text-xs">
+            <i class="fas fa-shapes"></i> General
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-2 rounded-full bg-neutral-100 text-neutral-800 ring-1 ring-neutral-200 px-2.5 py-1 text-xs">
+            <i class="fas fa-wand-magic-sparkles"></i> Custom
+          </span>
+        {% endif %}
+
+        <!-- School badge -->
+        {% if division.school %}
+          <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 ring-1 ring-amber-100 px-2.5 py-1 text-xs">
+            <i class="fas fa-school"></i>
+            {{ division.school.name }}
+          </span>
+        {% endif %}
+
+        <!-- Created date -->
+        {% if division.created_at %}
+          <span class="inline-flex items-center gap-2 rounded-full bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200 px-2.5 py-1 text-xs">
+            <i class="fas fa-calendar-alt"></i>
+            Created {{ division.created_at|date:"M j, Y" }}
+          </span>
+        {% endif %}
+
+       
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="{% url 'classes_app:division_edit' division.pk %}"
+         class="px-3 py-2 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-sm font-medium">
+        <i class="fas fa-pen mr-1"></i> Edit
+      </a>
+      <a href="{% url 'classes_app:division_audit' division.pk %}"
+         class="px-3 py-2 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-sm font-medium">
+        <i class="fas fa-list-check mr-1"></i> Audit log
+      </a>
+      <a href="{% url 'classes_app:create' %}?division={{ division.pk }}"
+         class="px-3 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 text-sm font-medium">
+        <i class="fas fa-plus-circle mr-1"></i> Add class
+      </a>
+      <button type="button" id="copyLink"
+              class="px-3 py-2 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-sm font-medium">
+        <i class="fas fa-link mr-1"></i> Copy link
+      </button>
+    </div>
+  </div>
+
+  <!-- Quick stats (mirrors style of class detail cards) -->
+ <!-- Quick stats row -->
+<div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <!-- Classes -->
+  <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <div class="flex items-center gap-2 text-sm text-neutral-500">
+      <i class="fas fa-layer-group text-primary-600"></i>
+      Classes
+    </div>
+    <div class="mt-2 text-2xl font-bold text-neutral-900">
+      {{ num_classes|default:division.classes.count }}
+    </div>
+  </div>
+
+  <!-- Teachers -->
+  <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <div class="flex items-center gap-2 text-sm text-neutral-500">
+      <i class="fas fa-chalkboard-teacher text-primary-600"></i>
+      Teachers
+    </div>
+    <div class="mt-2 text-2xl font-bold text-neutral-900">
+      {{ num_teachers|default:"—" }}
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <div class="flex items-center gap-2 text-sm text-neutral-500">
+      <i class="fas fa-circle-info text-primary-600"></i>
+      Students
+    </div>
+    <div class="mt-2 text-2xl font-bold text-neutral-900">
+      {{ num_students|default:"—" }}
+    </div>
+  </div>
+</div>
+
+</div>
+<!-- Alerts -->
+{% if num_classes == 0 %}
+  <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 p-3 text-sm flex items-start gap-2">
+    <i class="fas fa-info-circle mt-0.5"></i>
+    <div>This division has no classes assigned yet. Use “Add Class” to create one.</div>
+  </div>
+{% endif %}
+
+<!-- Associated classes -->
+<div class="bg-white border border-neutral-200 rounded-2xl shadow-md mb-6">
+  <button type="button" class="w-full px-6 py-4 flex justify-between items-center"
+          onclick="toggleCollapse('classesSection')">
+    <h2 class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-layer-group text-primary-600"></i> Classes
+    </h2>
+    <i id="classesIcon" class="fas fa-chevron-down text-neutral-500"></i>
+  </button>
+  <div id="classesSection" class="p-6 hidden">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between mb-4">
+      <input id="classSearch" type="text" placeholder="Search classes…"
+             class="w-64 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500">
+      <a href="{% url 'classes_app:create' %}?division={{ division.pk }}"
+         class="px-3 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition inline-flex items-center gap-2">
+        <i class="fas fa-plus-circle"></i><span>Add class</span>
+      </a>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto min-w-max">
+      <table class="min-w-full overflow-auto text-sm">
+        <thead class="bg-gray-50 text-neutral-600 text-xs uppercase">
+          <tr>
+            <th class="px-4 py-2 text-left font-semibold">Class name</th>
+            <th class="px-4 py-2 text-left font-semibold">Homeroom teacher(s)</th>
+            <th class="px-4 py-2 text-left font-semibold">Subjects</th>
+            <th class="px-4 py-2 text-left font-semibold">Students</th>
+            <th class="px-4 py-2 text-center font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="classRows" class="divide-y divide-gray-100">
+          {% for c in classes|default:division.classes.all %}
+          <tr class="hover:bg-gray-50 transition" data-class-name="{{ c.name|lower }}">
+            <td class="px-4 py-3">
+              <a href="{% url 'classes_app:detail' c.pk %}" class="text-neutral-900 hover:underline">{{ c.name }}</a>
+            </td>
+            <td class="px-4 py-3">
+              {% with c.homeroom_teachers as homerooms %}
+                {% if homerooms.exists %}
+                  <div class="flex flex-wrap gap-1">
+                    {% for h in homerooms %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+                        <i class="fas fa-chalkboard-teacher mr-1 text-[10px]"></i>{{ h.teacher.full_name }}
+                      </span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span class="text-neutral-400 italic">None</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td class="px-4 py-3">{{ c.subject_assignments.count }} assigned</td>
+            <td class="px-4 py-3">
+              {% if c.students_count %}
+                {{ c.students_count }}
+              {% else %}
+                <span class="text-neutral-400">—</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-center">
+              <div class="flex items-center justify-center gap-2">
+                <a href="{% url 'classes_app:update' c.pk %}"
+                   class="inline-flex items-center px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                  <i class="fas fa-edit"></i>
+                </a>
+                <a href="{% url 'classes_app:detail' c.pk %}"
+                   class="inline-flex items-center px-2 py-1 rounded-lg bg-neutral-50 text-neutral-700 hover:bg-neutral-100 transition">
+                  <i class="fas fa-eye"></i>
+                </a>
+                <a href="{% url 'classes_app:assign_teachers' c.pk %}"
+                   class="inline-flex items-center px-2 py-1 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition">
+                  <i class="fas fa-user-plus"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+              <i class="fas fa-info-circle mr-1"></i>No classes in this division yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Associated Teachers -->
+<div class="bg-white border border-neutral-200 rounded-2xl shadow-md mb-6">
+  <button type="button" class="w-full px-6 py-4 flex justify-between items-center"
+          onclick="toggleCollapse('teachersSection')">
+    <h2 class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-chalkboard-teacher text-primary-600"></i> Teachers
+    </h2>
+    <i id="teachersIcon" class="fas fa-chevron-down text-neutral-500"></i>
+  </button>
+  <div id="teachersSection" class="p-6 hidden">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between mb-4">
+      <input id="teacherSearch" type="text" placeholder="Search teachers…"
+             class="w-64 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500">
+    </div>
+
+    <!-- Teacher cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="teacherCards">
+      {% for t in teachers %}
+      <div class="rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 transition"
+           data-teacher-name="{{ t.full_name|lower }}">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-semibold text-neutral-900">{{ t.full_name }}</div>
+            <div class="text-xs text-neutral-600">
+              {% if t.is_homeroom %}
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Homeroom</span>
+              {% endif %}
+              {% if t.is_subject %}
+                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">Subject</span>
+              {% endif %}
+            </div>
+            {% if t.email or t.phone %}
+              <div class="mt-1 text-xs text-neutral-600">
+                {% if t.email %}<i class="fas fa-envelope mr-1"></i>{{ t.email }}{% endif %}
+                {% if t.phone %}<span class="ml-2"><i class="fas fa-phone mr-1"></i>{{ t.phone }}</span>{% endif %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="{% url 'teachers:detail' t.pk %}"
+               class="inline-flex items-center px-2 py-1 rounded-lg bg-neutral-50 text-neutral-700 hover:bg-neutral-100 transition"
+               title="View">
+              <i class="fas fa-eye"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="rounded-lg border border-neutral-200 p-4 text-center text-neutral-600">
+        <i class="fas fa-info-circle mr-1"></i>No teachers linked to this division yet.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Description / notes -->
+<div class="bg-white border border-neutral-200 rounded-2xl shadow-md mb-6">
+  <button type="button" class="w-full px-6 py-4 flex justify-between items-center"
+          onclick="toggleCollapse('descriptionSection')">
+    <h2 class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-file-alt text-primary-600"></i> Description / notes
+    </h2>
+    <i id="descriptionIcon" class="fas fa-chevron-down text-neutral-500"></i>
+  </button>
+  <div id="descriptionSection" class="p-6 hidden">
+    {% if division.description %}
+      <p class="text-sm text-neutral-700">{{ division.description }}</p>
+    {% else %}
+      <p class="text-sm text-neutral-500 italic">No notes added.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Activity / History -->
+<div class="bg-white border border-neutral-200 rounded-2xl shadow-md mb-6">
+  <button type="button" class="w-full px-6 py-4 flex justify-between items-center"
+          onclick="toggleCollapse('historySection')">
+    <h2 class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-clock-rotate-left text-primary-600"></i> Activity / history
+    </h2>
+    <i id="historyIcon" class="fas fa-chevron-down text-neutral-500"></i>
+  </button>
+  <div id="historySection" class="p-6 hidden">
+    {% if logs %}
+      <ul class="space-y-2">
+        {% for log in logs %}
+          <li class="text-sm text-neutral-800">
+            <span class="text-neutral-600">{{ log.timestamp|date:"M d, Y H:i" }}</span> — {{ log.message }}
+            {% if log.actor %}<span class="text-neutral-500">by {{ log.actor }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-neutral-500 italic">No recent changes recorded.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Related divisions (optional) -->
+{% if related_divisions %}
+<div class="rounded-xl border border-neutral-200 bg-white p-4 mb-6">
+  <h2 class="text-sm font-semibold text-neutral-900 mb-3">Related divisions</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    {% for rd in related_divisions %}
+      <a href="{% url 'classes_app:division_detail' rd.pk %}"
+         class="rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50 transition">
+        <div class="font-semibold text-neutral-900">{{ rd.name }}</div>
+        <div class="text-xs text-neutral-600">{{ rd.description|default:"No notes" }}</div>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // Live search: classes
+    const classRows = Array.from(document.querySelectorAll("#classRows tr[data-class-name]"));
+    const classSearch = document.getElementById("classSearch");
+    if (classSearch) {
+      classSearch.addEventListener("input", () => {
+        const q = (classSearch.value || "").toLowerCase();
+        classRows.forEach(row => {
+          const name = row.getAttribute("data-class-name") || "";
+          row.style.display = (!q || name.includes(q)) ? "" : "none";
+        });
+      });
+    }
+
+    // Live search: teachers
+    const teacherCards = Array.from(document.querySelectorAll("#teacherCards [data-teacher-name]"));
+    const teacherSearch = document.getElementById("teacherSearch");
+    if (teacherSearch) {
+      teacherSearch.addEventListener("input", () => {
+        const q = (teacherSearch.value || "").toLowerCase();
+        teacherCards.forEach(card => {
+          const name = card.getAttribute("data-teacher-name") || "";
+          card.style.display = (!q || name.includes(q)) ? "" : "none";
+        });
+      });
+    }
+
+
+    
+  });
+</script>
+<script>
+  function toggleCollapse(id) {
+    // find all collapsible sections
+    const allSections = document.querySelectorAll('[id$="Section"]');
+    const allIcons = document.querySelectorAll('[id$="Icon"]');
+
+    allSections.forEach(section => {
+      if (section.id === id) {
+        // toggle the clicked one
+        const icon = document.getElementById(id.replace('Section','Icon'));
+        const isHidden = section.classList.contains('hidden');
+
+        // close all first
+        allSections.forEach(s => s.classList.add('hidden'));
+        allIcons.forEach(i => {
+          i.classList.remove('fa-chevron-up');
+          i.classList.add('fa-chevron-down');
+        });
+
+        // then open if it was hidden
+        if (isHidden) {
+          section.classList.remove('hidden');
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+      }
+    });
+  }
+</script>
+
+{% endblock %}

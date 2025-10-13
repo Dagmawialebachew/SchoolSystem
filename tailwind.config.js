@@ -6,7 +6,6 @@ module.exports = {
     "./**/*.py",
   ],
   safelist: [
-    'form-input', 
     'form-select',
     'form-textarea',
     'form-label',

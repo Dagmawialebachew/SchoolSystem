@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-
+{% load humanize %}
 {% block title %}School Admin Dashboard - SchoolSystem{% endblock %}
 
 {% block content %}
@@ -50,7 +50,7 @@
         <div class="bg-white rounded-2xl shadow p-6 flex items-center justify-between hover:shadow-lg transition">
             <div>
                 <h3 class="text-sm font-medium text-gray-500">Fees Due This Month</h3>
-                <p class="text-3xl font-bold text-red-600">${{ fees_due_this_month|floatformat:2 }}</p>
+                <p class="text-3xl font-bold text-red-600">{{ fees_due_this_month|intcomma }} <span class="text-sm text-gray-500">Br.</span></p>
             </div>
             <div class="bg-red-100 p-4 rounded-full">
                 <i class="fas fa-wallet text-red-600 text-2xl"></i>

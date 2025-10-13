@@ -184,39 +184,62 @@ class PaymentManager(models.Manager):
         return self.get_queryset().for_user(user)
 
 
+# payments/models.py
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
 class Payment(models.Model):
+    STATUS_PENDING = "PENDING"       # sent to provider / awaiting provider confirmation
+    STATUS_UNCONFIRMED = "UNCONFIRMED" # bank transfer uploaded, awaiting staff review
+    STATUS_CONFIRMED = "CONFIRMED"   # verified / reconciled
+    STATUS_REVERSED = "REVERSED"
+    STATUS_REJECTED = "REJECTED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_UNCONFIRMED, "Unconfirmed"),
+        (STATUS_CONFIRMED, "Confirmed"),
+        (STATUS_REVERSED, "Reversed"),
+        (STATUS_REJECTED, "Rejected"),
+    ]
+
     RECEIPT_CHOICES = [
         ('single', 'Single receipt for all invoices'),
         ('separate', 'Separate receipt for each invoice'),
         ('none', 'No receipt'),
     ]
+
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE)
     invoice = models.ForeignKey("Invoice", on_delete=models.CASCADE, related_name="payments")
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
     paid_on = models.DateTimeField(default=timezone.now)
     method = models.CharField(max_length=50, default="Cash")
-    receipt_type = models.CharField(
-        max_length=20,
-        choices=RECEIPT_CHOICES,
-        default='single',  # 👈 Default choice
-    )
+    provider = models.CharField(max_length=50, blank=True, null=True)  # e.g., TeleBirr, M-Pesa
+    external_transaction_id = models.CharField(max_length=128, blank=True, null=True, db_index=True)
+    receipt_type = models.CharField(max_length=20, choices=RECEIPT_CHOICES, default='single')
+    receipt_file = models.FileField(upload_to="payment_receipts/%Y/%m/%d/", blank=True, null=True)
     is_reversed = models.BooleanField(default=False)
-    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    reference = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        help_text="Optional: Bank transfer ID, MPesa code, or Tele Birr transaction ID"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    received_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, related_name="payments_received")
+    paid_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, related_name="payments_made")
+    confirmed_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, related_name="payments_confirmed")
+    confirmed_at = models.DateTimeField(blank=True, null=True)
+    reference = models.CharField(max_length=100, blank=True, null=True,
+                                 help_text="Bank transfer ID, MPesa code, TeleBirr transaction ID, or internal ref")
 
-    objects = PaymentManager()
+    objects = PaymentManager()  # keep your manager
 
-    def __str__(self):
-        return f"{self.amount} for {self.invoice}"
+    def mark_confirmed(self, by_user=None):
+        self.status = self.STATUS_CONFIRMED
+        self.confirmed_by = by_user
+        self.confirmed_at = timezone.now()
+        self.save(update_fields=['status','confirmed_by','confirmed_at'])
+
 
 class PaymentReversal(models.Model):
     payment = models.ForeignKey('Payment', on_delete=models.CASCADE, related_name='reversals')
-    reversed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    reversed_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True)
     reason = models.TextField(blank=True, null=True, default="Reversal requested by accountant")
     reversed_on = models.DateTimeField(default=timezone.now)
 

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}My Kids{% endblock %}
+{% load humanize %}
+{% block content %}
+<div class="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-bold text-neutral-900">My Kids</h1>
+    <a href="{% url 'parents:dashboard' %}" class="text-primary-600 text-sm hover:underline">← Back to Home</a>
+  </div>
+
+  <!-- Kids Grid -->
+  <section id="children" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for child in children %}
+    <a href="{% url 'parents:child_detail' child.id %}" 
+       class="flex flex-col rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+
+      <!-- Header -->
+      <div class="flex items-center gap-3">
+        <div class="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
+          {{ child.initial }}
+        </div>
+        <div class="min-w-0">
+          <div class="font-semibold text-neutral-900 truncate">{{ child.full_name }}</div>
+          <div class="text-sm text-neutral-600 truncate">{{ child.class_program }} • {{ child.division }}</div>
+        </div>
+        <div class="ml-auto">
+          {% if child.attendance_today == "present" %}
+            <span class="inline-flex items-center text-emerald-600 text-xs font-medium">
+              <i class="fas fa-check-circle mr-1"></i> Present
+            </span>
+          {% elif child.attendance_today == "absent" %}
+            <span class="inline-flex items-center text-red-600 text-xs font-medium">
+              <i class="fas fa-times-circle mr-1"></i> Absent
+            </span>
+          {% elif child.attendance_today == "partial" %}
+            <span class="inline-flex items-center text-amber-600 text-xs font-medium">
+              <i class="fas fa-clock mr-1"></i> Late
+            </span>
+          {% else %}
+            <span class="inline-flex items-center text-neutral-400 text-xs font-medium">
+              <i class="fas fa-question-circle mr-1"></i> Not marked
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Attendance -->
+      <div class="mt-4">
+        {% if child.attendance_percent is not none %}
+        <div class="flex items-center justify-between text-xs text-neutral-600 mb-1">
+          <span>Attendance this month</span>
+          <span class="font-semibold">{{ child.attendance_percent }}%</span>
+        </div>
+        <div class="w-full bg-neutral-100 rounded-full h-2">
+          <div class="h-2 rounded-full {% if child.attendance_percent >= 90 %}bg-emerald-500{% elif child.attendance_percent >= 70 %}bg-amber-400{% else %}bg-red-500{% endif %}"
+               style="width: {{ child.attendance_percent }}%"></div>
+        </div>
+        {% else %}
+        <p class="text-xs text-neutral-500 italic">No records yet</p>
+        {% endif %}
+      </div>
+
+      <!-- Fees -->
+      <div class="mt-4 space-y-1 text-sm">
+        <p class="flex items-center justify-between">
+          <span class="text-neutral-600">Unpaid invoices</span>
+          <span class="font-medium">{{ child.unpaid_count }}</span>
+        </p>
+        {% if child.partial_count %}
+        <p class="flex items-center justify-between">
+          <span class="text-neutral-600">Partially paid</span>
+          <span class="font-medium">{{ child.partial_count }}</span>
+        </p>
+        {% endif %}
+        {% if child.next_due_date %}
+        <p class="flex items-center justify-between">
+          <span class="text-neutral-600">Next due date</span>
+          <span class="font-medium">{{ child.next_due_date }}</span>
+        </p>
+        {% endif %}
+        <p class="flex items-center justify-between">
+          <span class="text-neutral-600">Balance</span>
+          <span class="font-semibold text-primary-700">{{ child.total_balance|intcomma }} Br.</span>
+        </p>
+      </div>
+
+      <!-- Call to action -->
+      <div class="mt-6">
+        <span class="inline-flex items-center justify-center w-full rounded-xl bg-primary-50 text-primary-700 py-2 text-sm font-medium hover:bg-primary-100">
+          View Details
+        </span>
+      </div>
+
+    </a>
+    {% empty %}
+    <p class="col-span-full text-center text-neutral-500 italic">No children linked to your account yet.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

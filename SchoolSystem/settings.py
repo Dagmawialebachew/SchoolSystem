@@ -9,7 +9,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = True
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
-print('allowed hosts:', ALLOWED_HOSTS)
 # Security headers
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -39,6 +38,7 @@ PROJECT_APPS = [
     'classes_app',
     'attendance',
     'fees',
+    'parents',
     'documents',
     'notifications',
     'dashboard',
@@ -48,6 +48,8 @@ PROJECT_APPS = [
     "crispy_tailwind",
     'django_apscheduler',
     "scheduler",
+    'dal',
+    'dal_select2',
 
 
 ]
@@ -68,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.SchoolTenancyMiddleware',
+    "accounts.middleware.ForcePasswordChangeMiddleware",
 ]
 
 ROOT_URLCONF = 'SchoolSystem.urls'
@@ -83,6 +86,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                "notifications.context_processors.unread_announcements",
             ],
         },
     },

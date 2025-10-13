@@ -1,0 +1,496 @@
+{# templates/attendance/attendance_history.html #}
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}
+  {% if logs %}
+    {% with first_log=logs.0 %}
+      {{ first_log.attendance.student }} — Attendance history
+    {% endwith %}
+  {% else %}
+    Student Attendance History
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-full sm:max-w-4xl mx-auto px-4 sm:px-0 py-5 space-y-6">
+
+  <!-- HEADER -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="flex items-center gap-3 text-xl sm:text-2xl font-semibold text-neutral-900">
+        <i class="fas fa-clock-rotate-left text-primary-600 text-2xl" aria-hidden="true"></i>
+        {% if logs %}
+          {% with first_log=logs.0 %}
+            <span class="truncate max-w-xs">{{ first_log.attendance.student }} —</span>
+          {% endwith %}
+        {% endif %}
+        <span>Attendance History</span>
+      </h1>
+      <p class="mt-1 text-xs sm:text-sm text-neutral-500">
+        Interactive timeline — filter by date & status. Tap to expand entries.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="filterToggle"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-100 hover:bg-neutral-200 text-sm font-medium focus:outline-none"
+              title="Show / hide filters" aria-pressed="false">
+        <i class="fas fa-filter"></i>
+        <span class="hidden sm:inline">Filters</span>
+      </button>
+      <a href="{% url 'attendance:list' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-100 hover:bg-neutral-200 text-sm text-neutral-700 focus:outline-none"
+         title="Back to attendance list">
+        <i class="fas fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- QUICK GUIDANCE -->
+  <div id="tipsBar"
+       class="relative flex items-start justify-between gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700 shadow-sm">
+    <div class="flex items-start gap-3">
+      <i class="fas fa-info-circle text-primary-600 text-lg mt-0.5"></i>
+      <div class="space-y-1">
+        <p class="font-medium">Quick Guidance</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li>Tap “Filters” to show or hide</li>
+          <li>Adjust date or status to update results</li>
+          <li>Tap a month to expand; tap an entry for details</li>
+        </ul>
+      </div>
+    </div>
+    <button id="dismissTips"
+            class="absolute top-3 right-3 text-neutral-600 hover:text-neutral-800 font-semibold focus:outline-none"
+            aria-label="Dismiss tips">&times;</button>
+  </div>
+
+  <!-- STATS BADGES -->
+  <div class="flex flex-wrap gap-3">
+    <span class="inline-flex items-center gap-1 bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+      <i class="fas fa-list"></i>
+      Total: {{ stats.total }}
+    </span>
+    <span class="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+      <i class="fas fa-user-check"></i>
+      Present: {{ stats.present }}
+    </span>
+    <span class="inline-flex items-center gap-1 bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+      <i class="fas fa-user-times"></i>
+      Absent: {{ stats.absent }}
+    </span>
+    <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+      <i class="fas fa-clock"></i>
+      Late: {{ stats.late }}
+    </span>
+    <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+      <i class="fas fa-user-shield"></i>
+      Half Day: {{ stats.half_day }}
+    </span>
+  </div>
+
+  <!-- FILTER BAR -->
+ <form
+  id="filtersBar"
+  method="get"
+  class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4
+         sticky top-16 z-20 bg-white border border-neutral-200 rounded-lg
+         p-4 mb-4 shadow-sm w-full"
+>
+  <input type="hidden" name="student_id" value="{{ request.resolver_match.kwargs.student_id }}">
+
+  <!-- Start Date -->
+  <label class="relative flex-1">
+    <i class="fas fa-calendar-day absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+    <input
+      name="start"
+      id="startDate"
+      type="date"
+      value="{{ filter_start }}"
+      class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm
+             focus:outline-none focus:ring-2 focus:ring-primary-500"
+      title="Start date"
+    />
+  </label>
+
+  <!-- End Date -->
+  <label class="relative flex-1">
+    <i class="fas fa-calendar-day absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+    <input
+      name="end"
+      id="endDate"
+      type="date"
+      value="{{ filter_end }}"
+      class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm
+             focus:outline-none focus:ring-2 focus:ring-primary-500"
+      title="End date"
+    />
+  </label>
+
+  <!-- Status -->
+  <label class="relative flex-1 sm:flex-none sm:w-44">
+    <i class="fas fa-users-cog absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+    <select
+      name="status"
+      id="statusFilter"
+      class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm
+             focus:outline-none focus:ring-2 focus:ring-primary-500"
+      title="Status"
+    >
+      <option value="">All statuses</option>
+      <option value="PRESENT"  {% if filter_status == "PRESENT"  %}selected{% endif %}>Present</option>
+      <option value="ABSENT"   {% if filter_status == "ABSENT"   %}selected{% endif %}>Absent</option>
+      <option value="LATE"     {% if filter_status == "LATE"     %}selected{% endif %}>Late</option>
+      <option value="HALF_DAY" {% if filter_status == "HALF_DAY" %}selected{% endif %}>Half Day</option>
+    </select>
+  </label>
+
+  <!-- Clear -->
+  <button
+    id="clearFilters"
+    type="button"
+    class="w-full sm:w-auto px-4 py-2 rounded-lg bg-neutral-100 text-neutral-700 text-sm font-medium
+           hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+    title="Clear filters"
+  >
+    <i class="fas fa-eraser"></i>
+    <span class="hidden sm:inline">Clear</span>
+  </button>
+</form>
+
+
+   {# MOBILE FILTER SHEET (same inputs, used when filter bar is hidden) #}
+  <div id="mobileFilterSheet" class="fixed inset-x-4 bottom-4 z-50 translate-y-full transition-transform duration-300 ease-out">
+    <div class="bg-white rounded-2xl shadow-lg p-4 border border-neutral-200">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-semibold">Filters</div>
+        <button id="closeMobileFilters" class="p-2 rounded-md text-neutral-600 hover:bg-neutral-50" aria-label="Close">✕</button>
+      </div>
+
+      <form id="filtersMobile" method="get" class="space-y-3">
+        <input type="hidden" name="student_id" value="{{ request.resolver_match.kwargs.student_id }}">
+        <label class="block">
+          <span class="text-xs text-neutral-500">Start</span>
+          <input name="start" type="date" value="{{ filter_start }}" class="w-full rounded-lg border-neutral-300 px-3 py-2 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-xs text-neutral-500">End</span>
+          <input name="end" type="date" value="{{ filter_end }}" class="w-full rounded-lg border-neutral-300 px-3 py-2 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-xs text-neutral-500">Status</span>
+          <select name="status" class="w-full rounded-lg border-neutral-300 px-3 py-2 text-sm">
+            <option value="">All statuses</option>
+            <option value="PRESENT" {% if filter_status == "PRESENT" %}selected{% endif %}>Present</option>
+            <option value="ABSENT" {% if filter_status == "ABSENT" %}selected{% endif %}>Absent</option>
+            <option value="LATE" {% if filter_status == "LATE" %}selected{% endif %}>Late</option>
+            <option value="HALF_DAY" {% if filter_status == "HALF_DAY" %}selected{% endif %}>Half Day</option>
+          </select>
+        </label>
+
+        <div class="flex gap-2">
+          <button id="applyMobileFilters" type="button" class="flex-1 px-4 py-2 rounded-lg bg-primary-600 text-white">Apply</button>
+          <button id="clearMobileFilters" type="button" class="flex-1 px-4 py-2 rounded-lg bg-neutral-100 text-neutral-800">Clear</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LOGS (grouped by month) -->
+  {% if logs %}
+    {% regroup logs by changed_at|date:"F Y" as months %}
+    <div class="space-y-4">
+      {% for month in months %}
+      <section class="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+        <button class="month-toggle w-full flex items-center justify-between px-4 py-3 bg-neutral-50 hover:bg-neutral-100 focus:outline-none"
+                data-month="{{ month.grouper }}" aria-expanded="false" type="button">
+          <span class="font-medium text-neutral-900">{{ month.grouper }}</span>
+          <i class="fas fa-chevron-down text-neutral-500 transition-transform"></i>
+        </button>
+        <div class="month-logs hidden divide-y divide-neutral-200" data-month="{{ month.grouper }}">
+          {% for log in month.list %}
+          <article class="log-row px-4 py-3 touch-manipulation group cursor-pointer">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-neutral-900">{{ log.changed_at|date:"Y-m-d" }}</span>
+                  <span class="text-sm text-neutral-500 hidden sm:inline">{{ log.changed_at|time:"H:i" }}</span>
+                </div>
+               <div class="mt-1 text-sm text-neutral-600">
+  Status:
+  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold
+              {% if log.new_status == "PRESENT" %}bg-green-100 text-green-800{% endif %}
+              {% if log.new_status == "ABSENT"  %}bg-red-100   text-red-800{% endif %}
+              {% if log.new_status == "LATE"    %}bg-yellow-100 text-yellow-800{% endif %}
+              {% if log.new_status == "HALF_DAY"%}bg-blue-100  text-blue-800{% endif %}">
+    {{ log.new_status }}
+  </span>
+</div>
+
+              </div>
+              <button type="button"
+                      class="expand-btn p-2 rounded-full hover:bg-neutral-100 focus:outline-none"
+                      aria-expanded="false" title="Show details">
+                <i class="fas fa-chevron-down text-neutral-500 group-focus:text-primary-600"></i>
+              </button>
+            </div>
+            <div class="log-details mt-3 bg-neutral-50 border border-neutral-200 rounded-lg p-3 hidden" aria-hidden="true">
+              {% if log.attendance.session %}
+              <p class="text-sm text-neutral-700"><strong>Session:</strong> {{ log.attendance.session }}</p>
+              {% endif %}
+              <p class="text-sm text-neutral-700">
+                <strong>Previous:</strong> {{ log.previous_status|default:"None" }}
+                &rarr;
+                <strong>New:</strong> {{ log.new_status }}
+              </p>
+              {% if log.note %}
+              <p class="text-sm text-neutral-600 italic mt-2">Note: {{ log.note }}</p>
+              {% endif %}
+              <p class="text-xs text-neutral-500 mt-2">By {{ log.changed_by|default:"System" }}</p>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bg-white border border-neutral-200 rounded-xl p-6 text-center text-sm text-neutral-600">
+      No attendance history found.
+    </div>
+  {% endif %}
+
+</div>
+
+<!-- LIGHTWEIGHT JS: filters (live), toggle filter bar, mobile sheet, tips, month/row controls -->
+<script>
+(function () {
+  'use strict';
+
+  // small helpers
+  const qs = (s, ctx=document) => ctx.querySelector(s);
+  const qsa = (s, ctx=document) => Array.from(ctx.querySelectorAll(s));
+  const debounce = (fn, wait=350) => {
+    let t;
+    return function (...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), wait);
+    };
+  };
+
+  // Elements
+  const filterToggle = qs('#filterToggle');
+  const filtersBar = qs('#filtersBar');
+  const mobileSheet = qs('#mobileFilterSheet');
+  const openMobileFilter = qs('#filterToggle'); // same button toggles sheet on small screens
+  const closeMobileFilters = qs('#closeMobileFilters');
+  const filtersMobileForm = qs('#filtersMobile');
+  const filtersMobileApply = qs('#applyMobileFilters');
+  const filtersMobileClear = qs('#clearMobileFilters');
+  const clearDesktopBtn = qs('#clearFilters');
+  const dismissTipsBtn = qs('#dismissTips');
+  const tipsBar = qs('#tipsBar');
+
+  const studentId = "{{ request.resolver_match.kwargs.student_id }}";
+  const basePath = "{% url request.resolver_match.view_name student_id=request.resolver_match.kwargs.student_id %}";
+
+  // Respect reduced motion
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // --- Tips dismissal (localStorage) ---
+  try {
+    if (localStorage.getItem('attendance_tips_dismissed') === '1') {
+      tipsBar?.remove();
+    } else {
+      dismissTipsBtn?.addEventListener('click', () => {
+        try { localStorage.setItem('attendance_tips_dismissed', '1'); } catch(e) {}
+        if (prefersReduced) tipsBar?.remove();
+        else {
+          tipsBar?.classList.add('opacity-0', 'transition-opacity');
+          setTimeout(() => tipsBar?.remove(), 220);
+        }
+      }, { passive: true });
+    }
+  } catch(e){ /* ignore storage errors */ }
+
+  // Toggle filter bar (desktop) and mobile sheet
+  const isSmall = () => window.innerWidth < 640;
+  function showDesktopFilters(show) {
+    if (!filtersBar) return;
+    if (show) filtersBar.classList.remove('hidden');
+    else filtersBar.classList.add('hidden');
+    filterToggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+  }
+  function showMobileSheet(show) {
+    if (!mobileSheet) return;
+    mobileSheet.style.transform = show ? 'translateY(0)' : 'translateY(100%)';
+  }
+
+  // Initial state: desktop filters visible, mobile sheet hidden
+  showDesktopFilters(true);
+  showMobileSheet(false);
+
+  filterToggle?.addEventListener('click', () => {
+    if (isSmall()) {
+      // mobile: open/close sheet
+      const isOpen = mobileSheet && mobileSheet.style.transform === 'translateY(0px)';
+      showMobileSheet(!isOpen);
+    } else {
+      // desktop: toggle inline filters
+      showDesktopFilters(filtersBar.classList.contains('hidden'));
+    }
+  });
+
+  closeMobileFilters?.addEventListener('click', () => showMobileSheet(false), { passive: true });
+
+  // Build new URL and navigate (preserving student_id)
+  function buildAndNavigate(params) {
+    const url = new URL(window.location.href);
+    const search = new URLSearchParams(url.search);
+    // set provided params (start,end,status) or delete if empty
+    ['start','end','status'].forEach(k => {
+      if (params[k]) search.set(k, params[k]);
+      else search.delete(k);
+    });
+    // ensure student_id present
+    search.set('student_id', studentId);
+    window.location.href = url.pathname + '?' + search.toString();
+  }
+
+  // Live filter handler (debounced)
+  const liveFilterHandler = debounce(() => {
+    const start = qs('#startDate')?.value || qs('#filtersMobile input[name="start"]')?.value || '';
+    const end = qs('#endDate')?.value || qs('#filtersMobile input[name="end"]')?.value || '';
+    const status = qs('#statusFilter')?.value || qs('#filtersMobile select[name="status"]')?.value || '';
+    buildAndNavigate({ start, end, status });
+  }, 450);
+
+  // Attach change listeners (desktop inputs)
+  ['#startDate', '#endDate', '#statusFilter'].forEach(sel => {
+    const el = qs(sel);
+    if (el) el.addEventListener('change', liveFilterHandler, { passive: true });
+  });
+
+  // Mobile form: Apply button triggers immediate navigation (so users confirm)
+  filtersMobileApply?.addEventListener('click', (e) => {
+    const form = filtersMobileForm;
+    if (!form) return;
+    const fd = new FormData(form);
+    const start = fd.get('start') || '';
+    const end = fd.get('end') || '';
+    const status = fd.get('status') || '';
+    showMobileSheet(false);
+    buildAndNavigate({ start, end, status });
+  });
+
+  // Mobile clear + desktop clear: reset to base url with only student_id
+  function clearFilters() {
+    const url = new URL(basePath, window.location.origin);
+    window.location.href = url.pathname + '?student_id=' + encodeURIComponent(studentId);
+  }
+  clearDesktopBtn?.addEventListener('click', clearFilters, { passive: true });
+  filtersMobileClear?.addEventListener('click', () => { showMobileSheet(false); clearFilters(); }, { passive: true });
+
+  // --- Collapsible months & expandable rows ---
+  // Use delegation for robustness
+  document.addEventListener('click', (e) => {
+    // month toggle
+    const monthBtn = e.target.closest('.month-toggle');
+    if (monthBtn) {
+      const monthKey = monthBtn.dataset.month;
+      const container = document.querySelector('.month-logs[data-month="'+monthKey+'"]');
+      if (!container) return;
+      const isHidden = container.classList.toggle('hidden');
+      monthBtn.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+      const chev = monthBtn.querySelector('.chev');
+      if (chev) chev.textContent = isHidden ? '▾' : '▴';
+
+      // sessionStorage persistence of open months
+      try {
+        let open = JSON.parse(sessionStorage.getItem('attendance_open_months') || '[]');
+        if (!Array.isArray(open)) open = [];
+        const idx = open.indexOf(monthKey);
+        if (!isHidden && idx === -1) open.push(monthKey);
+        if (isHidden && idx > -1) open.splice(idx, 1);
+        sessionStorage.setItem('attendance_open_months', JSON.stringify(open));
+      } catch(e){/*ignore*/}
+      return;
+    }
+
+    // expand button
+    const expandBtn = e.target.closest('.expand-btn');
+    if (expandBtn) {
+      const row = expandBtn.closest('.log-row');
+      if (!row) return;
+      const details = row.querySelector('.log-details');
+      if (!details) return;
+      details.classList.toggle('hidden');
+      const exp = details.classList.contains('hidden') ? 'false' : 'true';
+      expandBtn.setAttribute('aria-expanded', exp);
+      details.setAttribute('aria-hidden', exp === 'false' ? 'true' : 'false');
+      expandBtn.classList.toggle('expanded', exp === 'true');
+      return;
+    }
+
+    // clicking row toggles details (unless click on button/link)
+    const row = e.target.closest('.log-row');
+    if (row && !e.target.closest('button') && !e.target.closest('a')) {
+      const details = row.querySelector('.log-details');
+      const btn = row.querySelector('.expand-btn');
+      if (!details) return;
+      details.classList.toggle('hidden');
+      const exp = details.classList.contains('hidden') ? 'false' : 'true';
+      if (btn) btn.setAttribute('aria-expanded', exp);
+      details.setAttribute('aria-hidden', exp === 'false' ? 'true' : 'false');
+      if (btn) btn.classList.toggle('expanded', exp === 'true');
+    }
+  }, { passive: true });
+
+  // keyboard accessibility for Enter/Space toggles on month-toggle and expand buttons
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const el = document.activeElement;
+      if (!el) return;
+      if (el.classList.contains('month-toggle') || el.classList.contains('expand-btn')) {
+        e.preventDefault();
+        el.click();
+      }
+    }
+    if (e.key === 'Escape') {
+      // close mobile sheet if open
+      if (mobileSheet && mobileSheet.style.transform === 'translateY(0px)') {
+        showMobileSheet(false);
+      }
+    }
+  });
+
+  // On load: re-open months saved in sessionStorage
+  try {
+    const openMonths = JSON.parse(sessionStorage.getItem('attendance_open_months') || '[]');
+    if (Array.isArray(openMonths)) {
+      openMonths.forEach(m => {
+        const btn = document.querySelector('.month-toggle[data-month="'+m+'"]');
+        const container = document.querySelector('.month-logs[data-month="'+m+'"]');
+        if (btn && container && container.classList.contains('hidden')) {
+          container.classList.remove('hidden');
+          btn.setAttribute('aria-expanded','true');
+          const chev = btn.querySelector('.chev');
+          if (chev) chev.textContent = '▴';
+        }
+      });
+    }
+  } catch(e){/*ignore*/}
+})();
+</script>
+
+<!-- SMALL CSS helpers (add to main stylesheet if preferred) -->
+<style>
+  .expand-btn.expanded i { transform: rotate(180deg); transition: transform .18s ease; }
+  .transition-opacity { transition: opacity .22s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    .expand-btn i, .transition-opacity { transition: none !important; }
+  }
+</style>
+{% endblock %}

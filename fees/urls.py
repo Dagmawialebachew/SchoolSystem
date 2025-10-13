@@ -46,6 +46,31 @@ path('payments/<int:pk>/reverse/', ReversePaymentView.as_view(), name='reverse_p
 path('students/<int:pk>/export-payments/', views.export_payments, name='export_payments'),
 # fees/urls.py
 path("payments/export/", PaymentExportView.as_view(), name="export_payments"),
+path('unconfirmed-payments-count/', views.unconfirmed_payments_count, name='api-unconfirmed-payments-count'),
 
+
+# for confirmation
+
+
+path(
+    "payments/unconfirmed/",
+    views.UnconfirmedPaymentsListView.as_view(),
+    name="unconfirmed_payments_list",
+),
+path(
+    "payments/unconfirmed/<int:pk>/",
+    views.UnconfirmedPaymentDetailView.as_view(),
+    name="unconfirmed_payment_detail",
+),
+path(
+    "payments/unconfirmed/<int:pk>/confirm/",
+    views.ConfirmUnconfirmedPaymentView.as_view(),
+    name="confirm_unconfirmed_payment",
+),
+path(
+    "payments/unconfirmed/<int:pk>/reject/",
+    views.RejectUnconfirmedPaymentView.as_view(),
+    name="reject_unconfirmed_payment",
+),
 
 ]

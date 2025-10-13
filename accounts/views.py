@@ -78,7 +78,7 @@ class CustomLoginView(LoginView):
         elif hasattr(user, "is_teacher") and user.is_teacher():
             return reverse_lazy("dashboard:teacher_dashboard")
         elif hasattr(user, "is_parent") and user.is_parent():
-            return reverse_lazy("dashboard:parent_dashboard")
+            return reverse_lazy("parents:dashboard")
         return reverse_lazy("dashboard")
 
 

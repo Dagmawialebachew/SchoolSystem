@@ -52,7 +52,7 @@
                 <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ class_program.name }}</td>
 
                 <!-- Division -->
-                <td class="px-6 py-4 text-sm text-gray-700">{{ class_program.division }}</td>
+                <td class="px-6 py-4 text-sm text-gray-700">{{ class_program.division|title }}</td>
 
                 <!-- Homeroom Teachers -->
                 <td class="px-6 py-4 text-sm text-gray-700">
@@ -85,8 +85,7 @@
                         <i class="fas fa-edit mr-1"></i> Edit
                     </a>
                     <a href="{% url 'classes_app:delete' class_program.pk %}" 
-                       class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
-                       onclick="return confirm('Are you sure you want to delete this class?');">
+                       class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition">
                         <i class="fas fa-trash-alt mr-1"></i> Delete
                     </a>
                 </td>
@@ -123,5 +122,20 @@
     </div>
     {% endif %}
 </div>
+<script>
+  // Save scroll position before leaving the page
+  window.addEventListener('beforeunload', () => {
+    localStorage.setItem('scrollPos', window.scrollY);
+  });
+
+  // Restore scroll position when page loads
+  window.addEventListener('load', () => {
+    const scrollPos = localStorage.getItem('scrollPos');
+    if (scrollPos) {
+      window.scrollTo(0, parseInt(scrollPos));
+      localStorage.removeItem('scrollPos'); // optional: remove after restoring
+    }
+  });
+</script>
 
 {% endblock %}

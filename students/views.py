@@ -3,14 +3,14 @@ from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib import messages
-from core.mixins import RoleRequiredMixin, SchoolScopedMixin, ParentScopedMixin
+from core.mixins import RoleRequiredMixin, UserScopedMixin
 from .models import Student
 from .forms import StudentForm
 from fees.models import FeeStructure
 from django.db.models import Q
 
 
-class StudentCreateView(RoleRequiredMixin, SchoolScopedMixin, CreateView):
+class StudentCreateView(RoleRequiredMixin, UserScopedMixin, CreateView):
     model = Student
     form_class = StudentForm
     template_name = 'students/student_form.html'
@@ -55,7 +55,7 @@ class StudentCreateView(RoleRequiredMixin, SchoolScopedMixin, CreateView):
 
     
     
-class StudentListView(RoleRequiredMixin, SchoolScopedMixin, ParentScopedMixin, ListView):
+class StudentListView(RoleRequiredMixin, UserScopedMixin, ListView):
     model = Student
     template_name = 'students/student_list.html'
     context_object_name = 'students'
@@ -75,7 +75,7 @@ class StudentListView(RoleRequiredMixin, SchoolScopedMixin, ParentScopedMixin, L
         return queryset
     
     
-class StudentUpdateView(RoleRequiredMixin, SchoolScopedMixin, UpdateView):
+class StudentUpdateView(RoleRequiredMixin, UserScopedMixin, UpdateView):
     """
     Update an existing student record.
     Supports multiple fee structures selection.
@@ -122,7 +122,7 @@ class StudentUpdateView(RoleRequiredMixin, SchoolScopedMixin, UpdateView):
         return super().form_valid(form)
 
 
-class StudentDeleteView(RoleRequiredMixin, SchoolScopedMixin, DeleteView):
+class StudentDeleteView(RoleRequiredMixin, UserScopedMixin, DeleteView):
     model = Student
     success_url = reverse_lazy("students:list")
     allowed_roles = ["SCHOOL_ADMIN"]

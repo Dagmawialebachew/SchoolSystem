@@ -224,7 +224,10 @@ function loadSummaryCards() {
         const formattedPaid = Number(data.paid_invoices).toLocaleString(
           "en-US"
         );
-        paidEl.textContent = formattedPaid;
+        const formattedUnconfirmed = Number(data.unconfirmed_invoices).toLocaleString(
+          "en-US"
+        );
+        paidEl.textContent = `${formattedPaid} / ${formattedUnconfirmed}`;
       }
 
       if (balanceEl) {

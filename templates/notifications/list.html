@@ -1,17 +1,229 @@
+{# templates/notifications/list.html #}
 {% extends "base.html" %}
+{% block title %}Announcements{% endblock %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto">
-  <h2 class="text-xl font-semibold mb-4">Announcements</h2>
-  <ul class="space-y-4">
-    {% for ann in announcements %}
-    <li class="p-4 bg-gray-50 rounded-lg shadow hover:shadow-md">
-      <h3 class="text-lg font-bold">{{ ann.title }}</h3>
-      <p class="text-gray-700">{{ ann.message }}</p>
-      <span class="text-sm text-gray-500">Posted {{ ann.created_at|date:"M d, Y H:i" }}</span>
-    </li>
-    {% empty %}
-    <p class="text-gray-500">No announcements yet.</p>
-    {% endfor %}
-  </ul>
+<div class="max-w-full sm:max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center gap-2 flex-wrap justify-between">
+    <h1 class="text-lg sm:text-2xl font-bold text-neutral-900 flex items-center gap-2">
+      <i class="fas fa-bullhorn text-primary-600"></i>
+      Announcements
+    </h1>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'notifications:create' %}" class="inline-flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">
+        <i class="fas fa-plus"></i> Create
+      </a>
+      <a href="{% url 'notifications:analytics' %}" class="inline-flex items-center gap-2 px-3 py-2 bg-neutral-100 text-neutral-800 rounded-lg hover:bg-neutral-200 text-sm">
+        <i class="fas fa-chart-pie"></i> Analytics
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters: scroll on mobile, sticky on md+ -->
+  <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-neutral-200">
+    <div class="md:sticky md:top-0 md:z-10 md:bg-white/90 md:backdrop-blur supports-[backdrop-filter]:md:bg-white/70 md:rounded-xl">
+      <div class="flex flex-wrap gap-3">
+        <div class="flex-1 min-w-[140px]">
+          <label class="block text-[11px] text-neutral-500">Priority</label>
+          <select id="fPriority" class="mt-1 w-full border rounded-lg px-2.5 py-2 text-sm">
+            <option value="">All priorities</option>
+            <option value="INFO" {% if request.GET.priority == 'INFO' %}selected{% endif %}>Info</option>
+            <option value="IMPORTANT" {% if request.GET.priority == 'IMPORTANT' %}selected{% endif %}>Important</option>
+            <option value="URGENT" {% if request.GET.priority == 'URGENT' %}selected{% endif %}>Urgent</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-[140px]">
+          <label class="block text-[11px] text-neutral-500">Channel</label>
+          <select id="fChannel" class="mt-1 w-full border rounded-lg px-2.5 py-2 text-sm">
+            <option value="">All channels</option>
+            <option value="DASH" {% if request.GET.channel == 'DASH' %}selected{% endif %}>In-app</option>
+            <option value="EMAIL" {% if request.GET.channel == 'EMAIL' %}selected{% endif %}>Email</option>
+            <option value="SMS" {% if request.GET.channel == 'SMS' %}selected{% endif %}>SMS</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-[140px]">
+          <label class="block text-[11px] text-neutral-500">Start</label>
+          <input id="fStart" type="date" value="{{ request.GET.start }}" class="mt-1 w-full border rounded-lg px-2.5 py-2 text-sm" />
+        </div>
+        <div class="flex-1 min-w-[140px]">
+          <label class="block text-[11px] text-neutral-500">End</label>
+          <input id="fEnd" type="date" value="{{ request.GET.end }}" class="mt-1 w-full border rounded-lg px-2.5 py-2 text-sm" />
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-2">
+        <input id="fSearch" type="text" value="{{ request.GET.search }}" placeholder="Search…" class="flex-1 border rounded-lg px-2.5 py-2 text-sm" />
+        <button id="fClear" class="px-3 py-2 text-sm rounded-lg border border-neutral-300 hover:bg-neutral-50">Clear</button>
+      </div>
+    </div>
+
+<select id="fCategory" class="border rounded-lg px-3 py-2 mt-2 text-sm">
+  <option value="">All categories</option>
+  <option value="GENERAL" {% if request.GET.category == 'GENERAL' %}selected{% endif %}>General</option>
+  <option value="ATTENDANCE" {% if request.GET.category == 'ATTENDANCE' %}selected{% endif %}>Attendance</option>
+  <option value="EVENT" {% if request.GET.category == 'EVENT' %}selected{% endif %}>Event</option>
+  <option value="ACADEMIC" {% if request.GET.category == 'ACADEMIC' %}selected{% endif %}>Academic</option>
+</select>
+
+
+  </div>
+
+  <!-- Feed -->
+  
+ <div id="announcement-feed">
+  {% include "notifications/_announcement_cards.html" with announcements=announcements %}
 </div>
+
+{% if is_paginated and page_obj.has_next %}
+  <div class="text-center mt-6">
+    <button id="load-more"
+            data-next-page="{{ page_obj.next_page_number }}"
+            class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+      Load more
+    </button>
+  </div>
+{% endif %}
+
+   
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("load-more");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    const nextPage = btn.dataset.nextPage;
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", nextPage);
+
+    fetch(`/notifications/page/?${params.toString()}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById("announcement-feed")
+                .insertAdjacentHTML("beforeend", data.html);
+        if (data.has_next) {
+          btn.dataset.nextPage = data.next_page;
+        } else {
+          btn.remove(); // no more pages
+        }
+      });
+  });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // CSRF
+  function getCookie(name) {
+    let val = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let c of cookies) {
+        const cookie = c.trim();
+        if (cookie.startsWith(name + "=")) {
+          val = decodeURIComponent(cookie.split("=")[1]);
+          break;
+        }
+      }
+    }
+    return val;
+  }
+  const csrfToken = getCookie("csrftoken");
+
+  // Auto mark-as-read when 50% visible
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        const article = entry.target;
+        const id = article.dataset.announcementId;
+        fetch(`/notifications/${id}/read/`, {
+          method: "POST",
+          headers: { "X-CSRFToken": csrfToken }
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === "ok") {
+            const counter = article.querySelector(".read-count span");
+            if (counter) counter.textContent = data.reads;
+          }
+        })
+        .catch(() => {});
+        observer.unobserve(article);
+      }
+    }
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll("article[data-announcement-id]").forEach(a => observer.observe(a));
+
+  // Reactions
+document.querySelectorAll(".react-btn").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const article = btn.closest("article[data-announcement-id]");
+    const id = article.dataset.announcementId;
+    const reaction = btn.dataset.reaction;
+
+    fetch(`/notifications/${id}/react/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({ reaction })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === "ok") {
+        // Update the count for the specific reaction type
+        const countEl = article.querySelector(`.reaction-count[data-reaction="${reaction}"]`);
+        if (countEl) countEl.textContent = data.reaction_count;
+
+        // Toggle active state on button
+        btn.classList.toggle("bg-neutral-100");
+      }
+    })
+    .catch(() => {});
+  });
+});
+
+  // Auto filters (mobile-friendly & fast)
+  const fPriority = document.getElementById("fPriority");
+  const fChannel  = document.getElementById("fChannel");
+  const fStart    = document.getElementById("fStart");
+  const fEnd      = document.getElementById("fEnd");
+  const fSearch   = document.getElementById("fSearch");
+  const fClear    = document.getElementById("fClear");
+  const fCategory = document.getElementById("fCategory");
+
+  const debounce = (fn, ms = 250) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; };
+
+  function applyFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const setOrDel = (k, v) => v ? params.set(k, v) : params.delete(k);
+    setOrDel("priority", fPriority.value.trim());
+    setOrDel("channel",  fChannel.value.trim());
+    setOrDel("start",    fStart.value.trim());
+    setOrDel("end",      fEnd.value.trim());
+    setOrDel("search",   fSearch.value.trim());
+    setOrDel("category", fCategory.value.trim());
+    const url = `${window.location.pathname}?${params.toString()}`;
+    window.location.replace(url);
+  }
+
+  [fPriority, fChannel, fStart, fEnd, fCategory].forEach(el => el.addEventListener("change", applyFilters));
+  fSearch.addEventListener("input", debounce(applyFilters, 300));
+  fClear.addEventListener("click", (e) => {
+    e.preventDefault();
+    fPriority.value = "";
+    fChannel.value  = "";
+    fStart.value    = "";
+    fEnd.value      = "";
+    fSearch.value   = "";
+    fCategory.value   = "";
+    applyFilters();
+  });
+});
+</script>
 {% endblock %}

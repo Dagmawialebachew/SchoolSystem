@@ -4,12 +4,12 @@ from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.contrib import messages
 from classes_app.models import ClassProgram
-from core.mixins import RoleRequiredMixin, SchoolScopedMixin
+from core.mixins import RoleRequiredMixin, UserScopedMixin
 from .models import Teacher
 from .forms import TeacherForm
 
 
-class TeacherListView(RoleRequiredMixin, SchoolScopedMixin, ListView):
+class TeacherListView(RoleRequiredMixin, UserScopedMixin, ListView):
     model = Teacher
     template_name = 'teachers/teacher_list.html'
     context_object_name = 'teachers'
@@ -27,7 +27,7 @@ class TeacherListView(RoleRequiredMixin, SchoolScopedMixin, ListView):
             )
         return queryset.order_by('last_name', 'first_name')
 
-class TeacherCreateView(RoleRequiredMixin, SchoolScopedMixin, CreateView):
+class TeacherCreateView(RoleRequiredMixin, UserScopedMixin, CreateView):
     model = Teacher
     form_class = TeacherForm
     template_name = 'teachers/teacher_form.html'
@@ -88,7 +88,7 @@ class TeacherCreateView(RoleRequiredMixin, SchoolScopedMixin, CreateView):
         print('here is the contenxt', context['classes_json'])
         return context
 
-class TeacherUpdateView(RoleRequiredMixin, SchoolScopedMixin, UpdateView):
+class TeacherUpdateView(RoleRequiredMixin, UserScopedMixin, UpdateView):
     model = Teacher
     form_class = TeacherForm
     template_name = 'teachers/teacher_form.html'
@@ -149,7 +149,7 @@ class TeacherUpdateView(RoleRequiredMixin, SchoolScopedMixin, UpdateView):
         return context
 
 
-class TeacherDetailView(SchoolScopedMixin, DetailView):
+class TeacherDetailView(UserScopedMixin, DetailView):
     model = Teacher
     template_name = "teachers/teacher_detail.html"
     context_object_name = "teacher"
@@ -158,7 +158,7 @@ class TeacherDetailView(SchoolScopedMixin, DetailView):
         return Teacher.objects.filter(school=self.request.user.school)
 
 
-class TeacherDeleteView(RoleRequiredMixin, SchoolScopedMixin, DeleteView):
+class TeacherDeleteView(RoleRequiredMixin, UserScopedMixin, DeleteView):
     model = Teacher
     template_name = 'teachers/teacher_confirm_delete.html'
     success_url = reverse_lazy('teachers:list')

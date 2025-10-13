@@ -8,7 +8,7 @@ class User(AbstractUser):
         ('SCHOOL_ADMIN', 'School Admin'),
         ('TEACHER', 'Teacher'),
         ('PARENT', 'Parent'),
-        ('ACCOUNTANT', 'ACCOUNTANT')
+        ('ACCOUNTANT', 'ACCOUNTANT')  
     ]
     
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='PARENT')

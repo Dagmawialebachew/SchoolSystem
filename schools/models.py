@@ -9,6 +9,7 @@ class School(models.Model):
     website = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     in_progress = models.BooleanField(default= True)
+    telegram_bot_token = models.CharField(max_length=200, blank=True, null=True)
 
     class Meta:
         ordering = ["name"]

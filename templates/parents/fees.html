@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Fees & Payments{% endblock %}
+{% load humanize %}
+{% block content %}
+
+<div class="p-2 md:p-10 max-w-7xl mx-auto space-y-8">
+
+    <header class="flex flex-wrap items-start justify-between gap-4 border-b border-neutral-200 pb-5">
+        <div class="min-w-0">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight">Fees & Payments</h1>
+            <p class="text-sm text-neutral-600 mt-1">
+                A consolidated overview of your children's financial status.
+            </p>
+        </div>
+        <a href="{% url 'parents:dashboard' %}"
+           class="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 transition">
+            <i class="fas fa-arrow-left h-3 w-3"></i> 
+            Back to Dashboard
+        </a>
+    </header>
+
+   <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+
+    <div class="flex flex-col justify-between rounded-xl bg-white border border-neutral-200 p-4 sm:p-6 shadow-md transition duration-300">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-child text-primary-600 text-sm sm:text-base"></i>
+            <div class="text-xs sm:text-sm text-neutral-500 font-medium">Children</div>
+        </div>
+        <div class="text-2xl sm:text-3xl font-bold text-neutral-900 mt-4 text-left">{{ children_data|length }}</div>
+    </div>
+
+    <div class="flex flex-col justify-between rounded-xl bg-white border border-neutral-200 p-4 sm:p-6 shadow-md transition duration-300">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-file-invoice-dollar text-amber-600 text-sm sm:text-base"></i>
+            <div class="text-xs sm:text-sm text-neutral-500 font-medium">Invoices</div>
+        </div>
+        <div class="text-2xl sm:text-3xl font-bold text-neutral-900 mt-4 text-left">{{ invoice_count }}</div>
+    </div>
+
+    <div class="flex flex-col justify-between rounded-xl bg-red-50 border border-red-200 p-4 sm:p-6 shadow-md transition duration-300">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-money-bill-transfer text-red-600 text-sm sm:text-base"></i>
+            <div class="text-xs sm:text-sm text-red-700 font-medium">Total Unpaid (Br)</div>
+        </div>
+        <div class="text-2xl sm:text-3xl font-bold text-red-700 mt-4 text-left">{{ total_unpaid|intcomma }}</div>
+    </div>
+
+    <div class="flex flex-col justify-between rounded-xl bg-emerald-50 border border-emerald-200 p-4 sm:p-6 shadow-md transition duration-300">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-sack-dollar text-emerald-600 text-sm sm:text-base"></i>
+            <div class="text-xs sm:text-sm text-emerald-700 font-medium">Total Paid (Br)</div>
+        </div>
+        <div class="text-2xl sm:text-3xl font-bold text-emerald-700 mt-4 text-left">{{ total_paid|intcomma }}</div>
+    </div>
+
+</section>
+
+    <div class="pt-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-900 mb-3">Invoices by Child</h2>
+        <div class="flex flex-wrap gap-2 sm:gap-3">
+            <button class="filter-btn px-3 py-1.5 text-xs sm:text-sm rounded-full font-semibold transition"
+                    data-filter="ALL">All Students</button>
+            <button class="filter-btn px-3 py-1.5 text-xs sm:text-sm rounded-full font-semibold transition"
+                    data-filter="UNPAID">Unpaid</button>
+           
+                    
+            <button class="filter-btn px-3 py-1.5 text-xs sm:text-sm rounded-full font-semibold transition"
+                    data-filter="PAID">Fully Paid</button>
+        </div>
+    </div>
+
+    <section class="space-y-4 sm:space-y-6">
+        {% for item in children_data %}
+            <a href="{% url 'parents:child_fees_detail' item.child.id %}"
+               class="block group border border-neutral-200 bg-white rounded-xl shadow-md hover:shadow-lg transition duration-300 hover:border-primary-400 p-4 sm:p-5 cursor-pointer"
+               data-status-summary="{% if item.unpaid_count > 0 %}UNPAID{% elif item.partial_count > 0 %}PARTIAL{% else %}PAID{% endif %}">
+
+            <div class="flex max-md:flex-col items-start justify-between gap-4 w-full">
+  <div class="flex items-start gap-2 sm:gap-4 min-w-0 flex-grow">
+    <div class="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-full bg-primary-100 flex items-center justify-center font-extrabold text-lg sm:text-xl text-primary-700">
+      {{ item.child.full_name|slice:":1"|upper }}
+    </div>
+    <div class="min-w-0">
+      <h3 class="text-base sm:text-lg font-bold text-neutral-900 truncate sm:truncate">
+        {{ item.child.full_name }}
+      </h3>
+      <p class="text-xs sm:text-sm text-neutral-600 truncate sm:truncate break-words">
+        {{ item.child.class_program.name }} • {{ item.child.division.name }}
+      </p>
+    </div>
+  </div>
+
+  <div class="flex max-md:mt-2 max-md:w-full max-md:justify-between items-end gap-2 sm:gap-3 flex-shrink-0">
+    <div class="text-right max-md:text-left">
+      <div class="text-xs text-neutral-500">Balance Due</div>
+      <div class="text-base sm:text-lg font-bold {% if item.total_balance > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
+        {{ item.total_balance|intcomma }} Br
+      </div>
+    </div>
+    <i class="fas fa-chevron-right h-4 w-4 text-neutral-400 group-hover:text-primary-600 transition hidden sm:block"></i>
+  </div>
+</div>
+
+
+                <div class="mt-3 pt-3 border-t border-neutral-100 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-neutral-500">Unpaid</span>
+                        <span class="font-bold text-red-600">{{ item.unpaid_count }}</span>
+                    </div>
+                   
+                    <div class="flex items-center justify-between">
+                        <span class="text-neutral-500">Total Invoices</span>
+                        <span class="font-bold text-neutral-900">{{ item.invoices_count }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-neutral-500">Next Due</span>
+                        <span class="font-bold text-neutral-900">{% if item.next_due_date %}{{ item.next_due_date }}{% else %}—{% endif %}</span>
+                    </div>
+                </div>
+            </a>
+        {% empty %}
+            <p class="text-center text-neutral-500 italic py-8 bg-white rounded-xl border border-neutral-200 shadow-sm">No students or invoices found.</p>
+        {% endfor %}
+    </section>
+<section class="mt-8 pt-4">
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-900 mb-3">Recent Payment History</h2>
+
+    <div class="space-y-4">
+        {% for p in payments|slice:":5" %}
+        <a href="#"
+           class="block bg-white border border-neutral-200 rounded-xl shadow-sm hover:shadow-md p-4 sm:p-5 transition group">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-1">
+                    <div class="flex flex-col text-sm sm:text-base">
+                        <span class="text-neutral-500">Date</span>
+                        <span class="font-medium text-neutral-900">{{ p.paid_on|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="flex flex-col text-sm sm:text-base">
+                        <span class="text-neutral-500">Student</span>
+                        <span class="font-medium text-neutral-900">{{ p.invoice.student.full_name }}</span>
+                    </div>
+                    <div class="flex flex-col text-sm sm:text-base hidden sm:flex">
+                        <span class="text-neutral-500">Invoice ID</span>
+                        <span class="font-medium text-neutral-900">#{{ p.id }}</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 sm:mt-0">
+                    <div class="flex flex-col text-sm sm:text-base text-right">
+                        <span class="text-neutral-500">Amount Paid</span>
+                        <span class="font-bold text-primary-700">{{ p.amount|intcomma }} Br</span>
+                    </div>
+
+                    <!-- Status Badge -->
+                    <div class="flex-shrink-0 mt-2 sm:mt-0 text-right">
+                        {% if p.is_reversed %}
+                            <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                <i class="fas fa-undo"></i> Reversed
+                            </span>
+                        {% elif p.status == 'PENDING' %} 
+                            <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                <i class="fas fa-hourglass-half"></i> Pending
+                            </span>
+                        {% elif p.status == 'UNCONFIRMED' %} 
+                            <span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                <i class="fas fa-question-circle"></i> Unconfirmed
+                            </span>
+                        {% elif p.status == 'REJECTED' %} 
+                            <span class="px-3 py-1 rounded-full bg-danger-100 text-danger-800 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                <i class="fas fa-question-circle"></i> Rejected
+                            </span>
+                        {% elif p.status == 'CONFIRMED' %}
+                            <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                <i class="fas fa-check-circle"></i> Confirmed
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <p class="text-center text-neutral-500 italic py-8 bg-white rounded-xl border border-neutral-200 shadow-sm">No payment history yet.</p>
+        {% endfor %}
+    </div>
+</section>
+
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const filterButtons = document.querySelectorAll(".filter-btn");
+    const studentCards = document.querySelectorAll("[data-status-summary]");
+
+    // Function to apply active styles to the filter buttons
+    function updateFilterStyles(activeFilter) {
+        filterButtons.forEach(btn => {
+            const f = btn.dataset.filter;
+            // 1. Reset all buttons to inactive state
+            btn.classList.remove("bg-primary-600", "text-white", "bg-red-500", "text-white", "bg-amber-500", "text-white", "bg-emerald-500", "text-white");
+            btn.classList.add("bg-neutral-100", "text-neutral-700", "hover:bg-neutral-200");
+            
+            if (f === activeFilter) {
+                // 2. Apply active style based on status color
+                btn.classList.remove("bg-neutral-100", "text-neutral-700", "hover:bg-neutral-200");
+                if (f === "ALL") {
+                    btn.classList.add("bg-primary-600", "text-white");
+                } else if (f === "UNPAID") {
+                    btn.classList.add("bg-red-500", "text-white");
+                } else if (f === "PAID") {
+                    btn.classList.add("bg-emerald-500", "text-white");
+                }
+            }
+        });
+    }
+
+    // Filters logic
+    filterButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const f = btn.dataset.filter;
+            updateFilterStyles(f);
+
+            studentCards.forEach(card => {
+                if (f === "ALL") {
+                    card.style.display = "block";
+                    return;
+                }
+                card.style.display = card.dataset.statusSummary === f ? "block" : "none";
+            });
+        });
+    });
+
+    // Initialize with the "ALL" filter active on load
+    const allButton = document.querySelector(".filter-btn[data-filter='ALL']");
+    if (allButton) {
+        allButton.click();
+    }
+});
+</script>
+
+{% endblock %}

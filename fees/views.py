@@ -1,13 +1,13 @@
+import csv
 from django.shortcuts import get_object_or_404, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.views.generic import ListView, DetailView, TemplateView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from io import BytesIO
-from django.db.models import Sum, Count, Q, Max
+from django.db.models import Q, Sum, Case, When, Value, BooleanField, Max, Count, F
 from reportlab.pdfgen import canvas
 from .models import Invoice, Payment, FeeStructure, Student, PaymentReversal
 from core.mixins import RoleRequiredMixin  # Adjust this if needed
-from django.db.models import F, Sum
 from .forms import InvoiceForm, FeeForm
 from django.contrib import messages
 from django.views import View
@@ -26,9 +26,9 @@ from django.core import signing
 from django.db import transaction
 from .utilis import make_receipt_token, generate_payments_pdf, generate_payments_excel
 # ---------------- Dashboard ----------------
-class FeesDashboardView(RoleRequiredMixin, TemplateView):
+class FeesDashboardView(RoleRequiredMixin,  TemplateView):
     template_name = "fees/fee_dashboard.html"
-    allowed_roles = ["ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]
+    allowed_roles = ["ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "PARENT"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -322,6 +322,7 @@ class InvoiceDetailView(RoleRequiredMixin, DetailView):
                         method=form.cleaned_data['method'],
                         reference=form.cleaned_data.get('reference', ''),
                         paid_on=paid_on_val,
+                        status='CONFIRMED'
                     )
                 )
 
@@ -349,6 +350,12 @@ class InvoiceDetailView(RoleRequiredMixin, DetailView):
         return redirect(url)
 
 
+from django.urls import reverse_lazy
+from django.views.generic import CreateView
+from .models import Invoice
+from .forms import InvoiceForm
+from django.contrib import messages
+
 class InvoiceCreateView(RoleRequiredMixin, CreateView):
     model = Invoice
     form_class = InvoiceForm
@@ -356,15 +363,20 @@ class InvoiceCreateView(RoleRequiredMixin, CreateView):
     success_url = reverse_lazy("fees:invoices_list")
     allowed_roles = ["ADMIN", "SCHOOL_ADMIN"]
 
-    def form_valid(self, form):
-        # Attach school automatically
-        form.instance.school = self.request.user.school
-        return super().form_valid(form)
-    
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
+        kwargs["user"] = self.request.user  # Pass user to the form
         return kwargs
+
+    def form_valid(self, form):
+        # Automatically attach the school
+        form.instance.school = self.request.user.school
+        messages.success(self.request, "Invoice created successfully.")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "There was a problem creating the invoice. Please check the fields.")
+        return super().form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -374,7 +386,6 @@ class InvoiceCreateView(RoleRequiredMixin, CreateView):
             "active_tab": "invoices",
         })
         return context
-
 
 # ----------------------
 # UPDATE INVOICE VIEW
@@ -387,7 +398,21 @@ class InvoiceUpdateView(RoleRequiredMixin, UpdateView):
     allowed_roles = ["ADMIN", "SCHOOL_ADMIN"]
 
     def get_queryset(self):
+        # Only invoices from the user's school
         return Invoice.objects.filter(school=self.request.user.school)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user  # Pass user to the form for filtering
+        return kwargs
+
+    def form_valid(self, form):
+        messages.success(self.request, "Invoice updated successfully.")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "There was a problem updating the invoice. Please check the fields.")
+        return super().form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -405,18 +430,32 @@ class InvoiceDeleteView(RoleRequiredMixin, DeleteView):
     allowed_roles = ["ADMIN", "SCHOOL_ADMIN"]
 
     def get_queryset(self):
+        """
+        Restrict deletion to invoices within the user's school only.
+        """
         return Invoice.objects.filter(school=self.request.user.school)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Override delete to add a success message.
+        """
+        invoice = self.get_object()
+        student_name = invoice.student.full_name
+        response = super().delete(request, *args, **kwargs)
+        messages.success(
+            request,
+            f"Invoice for {student_name} deleted successfully."
+        )
+        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
             "title": "Delete Invoice",
-            "subtitle": "Are you sure you want to delete this invoice?",
+            "subtitle": f"Are you sure you want to delete this invoice for {self.get_object().student.full_name}?",
             "active_tab": "invoices",
-
         })
         return context
-
 # ---------------- Payments ----------------
 class PaymentListView(RoleRequiredMixin, ListView):
     model = Student
@@ -427,7 +466,7 @@ class PaymentListView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Student.objects.filter(school=user.school, invoices__payments__isnull=False).annotate(
+        qs = Student.objects.filter(school=user.school, invoices__payments__isnull=False, invoices__payments__is_reversed = False, invoices__payments__status = "CONFIRMED").annotate(
             total_paid=Sum(
                 "invoices__payments__amount",
                 filter=Q(invoices__school=user.school,invoices__payments__is_reversed = False)
@@ -478,19 +517,18 @@ class PaymentDetailView(RoleRequiredMixin, DetailView):
 
     def get_queryset(self):
         user = self.request.user
-        return Student.objects.filter(
-            school=user.school
-        ).prefetch_related(
+        qs = Student.objects.filter(school=user.school).prefetch_related(
             Prefetch(
                 'invoices',
                 queryset=Invoice.objects.select_related('fee').prefetch_related('payments')
             ),
             Prefetch(
                 'invoices__payments',
-                queryset=Payment.objects.filter(is_reversed=False)
+                queryset=Payment.objects.filter(is_reversed=False, status="CONFIRMED")
             )
-        )
-        
+        ).distinct()
+        return qs
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -499,7 +537,7 @@ class PaymentDetailView(RoleRequiredMixin, DetailView):
 
         # Start with only paid payments for this student
         payments = Payment.objects.filter(
-            invoice__student=student, is_reversed = False
+            invoice__student=student, is_reversed = False, status = "CONFIRMED"
         ).select_related("invoice", "invoice__fee")
         reversals = PaymentReversal.objects.filter(payment__invoice__student = student ).select_related("payment", "reversed_by").order_by("-reversed_on")
 
@@ -594,21 +632,6 @@ class ExportInvoicesView(View):
     def get(self, request, *args, **kwargs):
         qs = Invoice.objects.filter(school=request.user.school)
         return export_invoices_to_excel(qs)
-
-class ExportPaymentReceiptView(View):
-    def get(self, request, pk):
-        payment = get_object_or_404(Payment, pk=pk, invoice__school=request.user.school)
-        return export_payment_receipt_pdf(payment)
-
-class BulkExportView(View):
-    def get(self, request, *args, **kwargs):
-        ids = request.GET.getlist("ids")
-        export_type = request.GET.get("export_type", "excel")
-        qs = Student.objects.filter(id__in=ids, school=request.user.school)
-
-        if export_type == "pdf":
-            return export_students_to_pdf(qs)
-        return export_students_to_excel(qs)
 
 class ExportStudentInvoicesExcelView(View):
     def get(self, request, pk, *args, **kwargs):
@@ -762,6 +785,7 @@ class PaymentCreateView(FormView):
 
         # Record the payment
         payment = form.save(commit=False)
+        payment.confirmed_by = self.request.user
         payment.school = student.school  # Attach to the school of the student
         payment.save()
 
@@ -862,3 +886,284 @@ class PaymentExportView(View):
             return generate_payments_excel(payments)
 
         return HttpResponse("Invalid export type.", status=400)
+    
+    
+    
+
+def unconfirmed_payments_count(request):
+    count = Invoice.objects.filter(
+        school=request.user.school, status = 'PAID'
+    ).exclude(
+        payments__status='CONFIRMED'
+    ).distinct().count() 
+    return JsonResponse({"count": count})
+
+
+#for confirmation
+
+class UnconfirmedPaymentsListView(RoleRequiredMixin, ListView):
+    model = Payment
+    template_name = "fees/unconfirmed_payments_list.html"
+    context_object_name = "payments"
+    paginate_by = 20
+    allowed_roles = ["ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]
+
+    # allowed sorting map -> uses actual model fields safely
+    SORT_MAP = {
+        "amount": "amount",
+        "-amount": "-amount",
+        "paid_on": "paid_on",
+        "-paid_on": "-paid_on",
+        "student": "invoice__student__full_name",
+        "-student": "-invoice__student__full_name",
+    }
+
+    def get_queryset(self):
+        user = self.request.user
+        now = timezone.now()
+        cutoff = now - timedelta(days=30)
+
+        # Start base queryset
+        qs = Payment.objects.filter(
+            school=user.school,
+            is_reversed=False,
+            status__in=["PENDING", "UNCONFIRMED"]
+        )
+
+        # Annotate whether payment is overdue (paid_on older than cutoff)
+        qs = qs.annotate(
+            is_overdue=Case(
+                When(paid_on__lt=cutoff, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            )
+        )
+
+        # Search
+        q = self.request.GET.get("search", "").strip()
+        if q:
+            qs = qs.filter(
+                Q(invoice__student__full_name__icontains=q) |
+                Q(invoice__id__icontains=q) |
+                Q(reference__icontains=q)
+            )
+
+        # Status filter (including 'overdue')
+        status = (self.request.GET.get("status") or "").strip()
+        if status:
+            if status.lower() == "overdue":
+                qs = qs.filter(is_overdue=True)
+            else:
+                qs = qs.filter(status=status.upper())
+
+        # Sorting: default -paid_on
+        sort = self.request.GET.get("sort", "-paid_on")
+        sort_field = self.SORT_MAP.get(sort, "-paid_on")
+        qs = qs.order_by(sort_field)
+
+        # Select related to avoid N+1
+        qs = qs.select_related("invoice__student", "invoice__fee", "school", "invoice")
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        qs = self.get_queryset()
+
+        context.update({
+            "total_unconfirmed": qs.count(),
+            "sum_unconfirmed": qs.aggregate(total=Sum("amount"))["total"] or 0,
+            "search_query": self.request.GET.get("search", ""),
+            "current_status": self.request.GET.get("status", ""),
+            "current_sort": self.request.GET.get("sort", "-paid_on"),
+            "querystring": self.request.GET.urlencode(),
+            "now": timezone.now(),
+        })
+        return context
+
+    def render_to_response(self, context, **response_kwargs):
+        # CSV export (respects the filters + sorting)
+        if self.request.GET.get("export") == "csv":
+            return self._export_csv(self.get_queryset())
+        return super().render_to_response(context, **response_kwargs)
+
+    def _export_csv(self, queryset):
+        filename = f"unconfirmed_payments_{timezone.now().strftime('%Y%m%d_%H%M')}.csv"
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        writer = csv.writer(response)
+        writer.writerow(["ID", "Student", "Invoice", "Amount", "Method", "Reference", "Received", "Status", "Is Overdue"])
+        for p in queryset:
+            writer.writerow([
+                p.id,
+                p.invoice.student.full_name if p.invoice and p.invoice.student else "",
+                f"#{p.invoice.id}" if p.invoice else "",
+                "{:.2f}".format(p.amount),
+                p.method,
+                p.reference or "",
+                p.paid_on.strftime("%Y-%m-%d %H:%M") if p.paid_on else "",
+                p.status,
+                bool(p.is_overdue),
+            ])
+        return response
+
+    def post(self, request, *args, **kwargs):
+        """
+        Bulk confirm/reject endpoint. Expects:
+          - action: "confirm" or "reject"
+          - selected: list of payment ids
+        """
+        action = request.POST.get("action")
+        ids = request.POST.getlist("selected")
+        if not ids or action not in {"confirm", "reject"}:
+            messages.error(request, "No items selected or invalid action.")
+            return redirect(reverse_lazy("fees:unconfirmed_payments_list"))
+
+        user = request.user
+        payments_qs = Payment.objects.filter(id__in=ids, is_reversed=False, school=user.school)
+
+        # Lock the rows to prevent race conditions
+        with transaction.atomic():
+            payments = payments_qs.select_for_update()
+            changed_confirmed = changed_rejected = 0
+            impacted_invoices = set()
+
+            for p in payments:
+                prev = p.status
+                if action == "confirm" and p.status != "CONFIRMED":
+                    p.status = "CONFIRMED"
+                    changed_confirmed += 1
+                elif action == "reject" and p.status != "REJECTED":
+                    p.status = "REJECTED"
+                    changed_rejected += 1
+                else:
+                    # nothing to do
+                    continue
+
+                p.save(update_fields=["status"])
+                if p.invoice_id:
+                    impacted_invoices.add(p.invoice_id)
+
+            # Recalculate invoice totals for impacted invoices
+            for inv_id in impacted_invoices:
+                inv = Invoice.objects.select_for_update().get(id=inv_id)
+                total = inv.payments.filter(status="CONFIRMED", is_reversed=False).aggregate(total=Sum("amount"))["total"] or 0
+                inv.amount_paid = total
+                inv.status = (
+                    "PAID" if total >= inv.amount_due
+                    else "PARTIAL" if total > 0
+                    else "UNPAID"
+                )
+                inv.save(update_fields=["amount_paid", "status"])
+
+        if changed_confirmed:
+            messages.success(request, f"{changed_confirmed} payment(s) confirmed.")
+        if changed_rejected:
+            messages.warning(request, f"{changed_rejected} payment(s) rejected.")
+        if not (changed_confirmed or changed_rejected):
+            messages.info(request, "No changes were made.")
+
+        return redirect(reverse_lazy("fees:unconfirmed_payments_list"))
+
+# ---------- Unconfirmed payment detail ----------
+class UnconfirmedPaymentDetailView(RoleRequiredMixin, DetailView):
+    model = Payment
+    template_name = "fees/unconfirmed_payment_detail.html"
+    context_object_name = "payment"
+    allowed_roles = ["ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]
+    
+    
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Payment.objects.filter(is_reversed=False).exclude(status="CONFIRMED")
+        if getattr(user, "school", None):
+            qs = qs.filter(school=user.school)
+        return qs.select_related("invoice__student", "invoice__fee", "school")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        p = self.get_object()
+        inv = p.invoice
+        student = inv.student
+        # show related confirmed payments for context
+        confirmed_sum = inv.payments.filter(status="CONFIRMED", is_reversed=False).aggregate(total=Sum("amount"))["total"] or 0
+        ctx.update({
+            "invoice": inv,
+            "student": student,
+            "confirmed_sum": confirmed_sum,
+            "unconfirmed_payments_for_invoice": inv.payments.filter(is_reversed=False).exclude(status="CONFIRMED"),
+        })
+        return ctx
+
+# ---------- Confirm / Reject ----------
+class ConfirmUnconfirmedPaymentView(RoleRequiredMixin, View):
+    allowed_roles = ["ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]
+
+    def post(self, request, pk, *args, **kwargs):
+        if request.user.role not in self.allowed_roles and not request.user.is_staff:
+            return HttpResponseForbidden("Permission denied")
+        payment = get_object_or_404(Payment, pk=pk, is_reversed=False)
+        if payment.status == "CONFIRMED":
+            messages.info(request, "Payment already confirmed.")
+            return redirect(request.META.get("HTTP_REFERER") or reverse_lazy("fees:unconfirmed_payments_list"))
+
+        with transaction.atomic():
+            payment.status = "CONFIRMED"
+            # new fields: confirmed_by, confirmed_on (if exist); don't crash if missing
+            if hasattr(payment, "confirmed_by"):
+                payment.confirmed_by = request.user
+            if hasattr(payment, "confirmed_on"):
+                payment.confirmed_on = timezone.now()
+            payment.save(update_fields=[f for f in ["status", "confirmed_by", "confirmed_on"] if hasattr(payment, f)])
+
+            # Recalculate invoice.amount_paid from CONFIRMED payments only
+            inv = payment.invoice
+            confirmed_sum = inv.payments.filter(status="CONFIRMED", is_reversed=False).aggregate(total=Sum("amount"))["total"] or 0
+            inv.amount_paid = confirmed_sum
+            # update status
+            if inv.amount_paid >= inv.amount_due:
+                inv.status = "PAID"
+            elif inv.amount_paid > 0:
+                inv.status = "PARTIAL"
+            else:
+                inv.status = "UNPAID"
+            inv.save(update_fields=["amount_paid", "status"])
+
+        messages.success(request, f"Payment #{payment.id} confirmed.")
+        return redirect(reverse_lazy("fees:unconfirmed_payments_list"))
+
+
+class RejectUnconfirmedPaymentView(RoleRequiredMixin, View):
+    allowed_roles = ["ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]
+
+    def post(self, request, pk, *args, **kwargs):
+        if request.user.role not in self.allowed_roles and not request.user.is_staff:
+            return HttpResponseForbidden("Permission denied")
+        payment = get_object_or_404(Payment, pk=pk, is_reversed=False)
+        if payment.status == "REJECTED":
+            messages.info(request, "Payment already rejected.")
+            return redirect(reverse_lazy("fees:unconfirmed_payments_list"))
+
+        with transaction.atomic():
+            payment.status = "REJECTED"
+            if hasattr(payment, "confirmed_by"):
+                payment.confirmed_by = request.user
+            if hasattr(payment, "confirmed_on"):
+                payment.confirmed_on = timezone.now()
+            payment.save(update_fields=[f for f in ["status", "confirmed_by", "confirmed_on"] if hasattr(payment, f)])
+
+            # Recalculate invoice.amount_paid using only CONFIRMED payments
+            inv = payment.invoice
+            confirmed_sum = inv.payments.filter(status="CONFIRMED", is_reversed=False).aggregate(total=Sum("amount"))["total"] or 0
+            inv.amount_paid = confirmed_sum
+            if inv.amount_paid >= inv.amount_due:
+                inv.status = "PAID"
+            elif inv.amount_paid > 0:
+                inv.status = "PARTIAL"
+            else:
+                inv.status = "UNPAID"
+            inv.save(update_fields=["amount_paid", "status"])
+
+        messages.success(request, f"Payment #{payment.id} rejected.")
+        return redirect(request.META.get("HTTP_REFERER") or reverse_lazy("fees:unconfirmed_payments_list"))

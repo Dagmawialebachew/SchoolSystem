@@ -1,0 +1,213 @@
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Divisions - SchoolSystem{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+    <i class="fas fa-layer-group text-primary-600"></i> Divisions
+  </h1>
+  <a href="{% url 'classes_app:division_create' %}"
+     class="px-4 py-2 bg-primary-600 text-white rounded-lg shadow hover:bg-primary-700 transition flex items-center space-x-2">
+    <i class="fas fa-plus"></i><span>Add Division</span>
+  </a>
+</div>
+
+<!-- Controls: Search, Type Filter, Sort -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <!-- Live search (client-side) -->
+  <input id="searchInput" type="text" placeholder="Search divisions…"
+         value="{{ current_search }}"
+         class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500">
+
+  <!-- Type filter (client-side) -->
+  <select id="typeFilter"
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500">
+    <option value="">All types</option>
+    {% for key,label in view.GENERAL_DIVISIONS %}
+      <option value="{{ key }}">General: {{ label }}</option>
+    {% endfor %}
+    <option value="CUSTOM">Custom</option>
+  </select>
+
+  <!-- Sort (server-side by query params) -->
+  <div class="col-span-2 md:col-span-1 flex items-center flex-wrap gap-2">
+    <span class="text-sm text-gray-600">Sort by:</span>
+    <a href="?sort=name{% if current_search %}&search={{ current_search }}{% endif %}"
+       class="text-sm px-2 rounded {% if current_sort == 'name' %}bg-neutral-100 font-semibold{% endif %}">
+      Name ↑
+    </a>
+    <a href="?sort=-name{% if current_search %}&search={{ current_search }}{% endif %}"
+       class="text-sm px-2 rounded {% if current_sort == '-name' %}bg-neutral-100 font-semibold{% endif %}">
+      Name ↓
+    </a>
+    <a href="?sort=classes{% if current_search %}&search={{ current_search }}{% endif %}"
+       class="text-sm px-2 rounded {% if current_sort == 'classes' %}bg-neutral-100 font-semibold{% endif %}">
+      Classes ↑
+    </a>
+    <a href="?sort=-classes{% if current_search %}&search={{ current_search }}{% endif %}"
+       class="text-sm px-2 rounded {% if current_sort == '-classes' %}bg-neutral-100 font-semibold{% endif %}">
+      Classes ↓
+    </a>
+    <a href="?sort=teachers{% if current_search %}&search={{ current_search }}{% endif %}"
+       class="text-sm px-2 rounded {% if current_sort == 'teachers' %}bg-neutral-100 font-semibold{% endif %}">
+      Teachers ↑
+    </a>
+    <a href="?sort=-teachers{% if current_search %}&search={{ current_search }}{% endif %}"
+       class="text-sm px-2 rounded {% if current_sort == '-teachers' %}bg-neutral-100 font-semibold{% endif %}">
+      Teachers ↓
+    </a>
+  
+  </div>
+</div>
+
+<!-- Table -->
+<div class="overflow-x-auto bg-white shadow-sm rounded-2xl border border-gray-100">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-2 text-left font-semibold text-gray-600">#</th>
+        <th class="px-4 py-2 text-left font-semibold text-gray-600">Name</th>
+        <th class="px-4 py-2 text-left font-semibold text-gray-600">Type</th>
+        <th class="px-4 py-2 text-center font-semibold text-gray-600">In progress</th>
+        <th class="px-4 py-2 text-center font-semibold text-gray-600">Classes</th>
+        <th class="px-4 py-2 text-center font-semibold text-gray-600">Teachers</th>
+        <th class="px-4 py-2 text-center font-semibold text-gray-600">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="divisionTable" class="divide-y divide-gray-100">
+      {% for d in divisions %}
+      <tr class="hover:bg-gray-50 transition"
+          data-name="{{ d.name|lower }}"
+          {% if d.name in general_keys %}
+            data-type="{{ d.name }}"
+          {% else %}
+            data-type="CUSTOM"
+          {% endif %}>
+        <td class="px-4 py-3 text-gray-500">
+          {{ forloop.counter0|add:page_obj.start_index }}
+        </td>
+
+        <!-- Name (clickable) + notes -->
+        <td class="px-4 py-3">
+          <a href="{% url 'classes_app:division_detail' d.pk %}"
+             class="text-neutral-900 hover:underline">{{ d.name }}</a>
+          {% if d.description %}
+            <p class="text-xs text-gray-500">{{ d.description }}</p>
+          {% endif %}
+        </td>
+
+        <!-- Type badge: General vs Custom -->
+        <td class="px-4 py-3">
+          {% if d.name in general_keys %}
+            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+              General
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+              Custom
+            </span>
+          {% endif %}
+        </td>
+
+        <!-- In progress badge -->
+        <td class="px-4 py-3 text-center">
+          {% if d.in_progress %}
+            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+              <i class="fas fa-hourglass-half mr-1 text-[10px]"></i> In progress
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full">
+              <i class="fas fa-check mr-1 text-[10px]"></i> Active
+            </span>
+          {% endif %}
+        </td>
+
+        <!-- Number of Classes -->
+        <td class="px-4 py-3 text-center text-gray-700">{{ d.num_classes }}</td>
+
+        <!-- Number of Teachers -->
+        <td class="px-4 py-3 text-center text-gray-700">{{ d.num_teachers }}</td>
+
+        <!-- Actions -->
+        <td class="px-4 py-3 text-center">
+          <div class="flex items-center justify-center gap-2">
+            <a href="{% url 'classes_app:division_detail' d.pk %}"
+               class="inline-flex items-center px-2 py-1 rounded-lg bg-neutral-50 text-neutral-700 hover:bg-neutral-100 transition"
+               title="View">
+              <i class="fas fa-eye"></i>
+            </a>
+            <a href="{% url 'classes_app:create' %}?division={{ d.pk }}"
+               class="inline-flex items-center px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+               title="Add Class">
+              <i class="fas fa-plus-circle"></i>
+            </a>
+            <a href="{% url 'classes_app:division_delete' d.pk %}"
+               class="inline-flex items-center px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+               onclick="return confirm('Delete this division?');"
+               title="Delete">
+              <i class="fas fa-trash-alt"></i>
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="px-4 py-6 text-center text-gray-500">
+          <i class="fas fa-info-circle mr-1"></i>No divisions found.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if is_paginated %}
+  <div class="flex justify-between items-center p-4">
+    <span class="text-sm text-gray-600">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    <div class="space-x-2 text-sm">
+      {% if page_obj.has_previous %}
+        <a href="?page=1{% if current_search %}&search={{ current_search }}{% endif %}"
+           class="px-3 py-1 border rounded hover:bg-gray-100">First</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% if current_search %}&search={{ current_search }}{% endif %}"
+           class="px-3 py-1 border rounded hover:bg-gray-100">Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if current_search %}&search={{ current_search }}{% endif %}"
+           class="px-3 py-1 border rounded hover:bg-gray-100">Next</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% if current_search %}&search={{ current_search }}{% endif %}"
+           class="px-3 py-1 border rounded hover:bg-gray-100">Last</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Live client-side filtering -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const rows = Array.from(document.querySelectorAll("#divisionTable tr[data-name]"));
+    const searchInput = document.getElementById("searchInput");
+    const typeFilter = document.getElementById("typeFilter");
+
+    function filterRows() {
+      const q = (searchInput.value || "").toLowerCase();
+      const t = typeFilter.value;
+
+      rows.forEach(row => {
+        const name = row.getAttribute("data-name") || "";
+        const type = row.getAttribute("data-type") || "";
+        const matchesSearch = !q || name.includes(q);
+        const matchesType = !t || type === t;
+        row.style.display = (matchesSearch && matchesType) ? "" : "none";
+      });
+    }
+
+    searchInput.addEventListener("input", filterRows);
+    typeFilter.addEventListener("change", filterRows);
+  });
+</script>
+{% endblock %}

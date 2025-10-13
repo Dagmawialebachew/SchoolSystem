@@ -4,7 +4,13 @@ from classes_app.models import ClassProgram
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from accounts.models import User
+from django.core.validators import RegexValidator
 
+
+ethiopian_phone_validator = RegexValidator(
+    regex=r"^09\d{8}$",
+    message="Phone number must be in the format 09XXXXXXXX (10 digits, starts with 09)."
+)
 
 class Student(SchoolOwnedModel):
     PAYMENT_STATUS_CHOICES = [
@@ -24,7 +30,11 @@ class Student(SchoolOwnedModel):
     full_name = models.CharField(max_length=100)
     date_of_birth = models.DateField(null=True, blank=True)
     parent_name = models.CharField(max_length=200)
-    parent_phone = models.CharField(max_length=20)
+    parent_phone = models.CharField(
+        max_length=10, 
+        validators=[ethiopian_phone_validator],
+        help_text="Enter phone as 09XXXXXXXX"
+    )    
     registration_date = models.DateField(auto_now_add=True)
 
     billing_cycle = models.CharField(

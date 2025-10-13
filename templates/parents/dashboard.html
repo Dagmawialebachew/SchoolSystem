@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+{% block title %}Parent Dashboard{% endblock %}
+{% load humanize %}
+{% block content %}
+<div class="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-neutral-900">Hi, {{ request.user.first_name }} 👋</h1>
+      <p class="mt-1 text-sm text-neutral-600">Welcome back to your parent dashboard</p>
+    </div>
+    <a href="{% url 'notifications:list' %}" class="relative p-2 rounded-full hover:bg-neutral-100 transition" aria-label="Notifications">
+      <i class="fas fa-bell text-xl text-neutral-600"></i>
+      <span class="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-600 text-white text-xs">
+        {{ unread_announcements_count|default:0 }}
+      </span>
+    </a>
+  </div>
+
+  <!-- Children Overview -->
+  <section id="children" class="relative">
+    <!-- MOBILE: Carousel -->
+    <div class="md:hidden">
+      <div class="text-center text-xs text-neutral-500 mb-3">
+        👉 Swipe or tap arrows to explore your children
+      </div>
+
+      <div id="children-carousel" class="relative overflow-hidden rounded-3xl">
+        <div class="child-cards relative h-auto min-h-[320px]">
+          {% for child in children %}
+          <div class="child-card absolute inset-0 opacity-0 pointer-events-none translate-x-full transition-all duration-500 ease-in-out
+                      rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <!-- Header -->
+            <div class="flex items-center gap-3">
+              <div class="h-12 w-12 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold" aria-hidden="true">
+                {{ child.initial }}
+              </div>
+              <div class="min-w-0">
+                <div class="font-semibold text-neutral-900 truncate">{{ child.full_name }}</div>
+                <div class="text-sm text-neutral-600 truncate">{{ child.class_program }} • {{ child.division }}</div>
+              </div>
+              <div class="ml-auto" aria-label="Today's attendance">
+                {% if child.attendance_today == "present" %}
+                  <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
+                {% elif child.attendance_today == "absent" %}
+                  <i class="fas fa-times-circle text-red-500 text-lg"></i>
+                {% elif child.attendance_today == "partial" %}
+                  <i class="fas fa-clock text-amber-400 text-lg"></i>
+                {% else %}
+                  <i title="Not marked" class="fas fa-question-circle text-neutral-300 text-lg"></i>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Attendance -->
+            <div class="mt-4 border-t border-neutral-100 pt-4">
+              {% if child.attendance_percent is not none %}
+              <div class="flex items-center justify-between text-xs text-neutral-600 mb-1">
+                <span>Attendance this month</span>
+                <span class="font-semibold">{{ child.attendance_percent }}%</span>
+              </div>
+              <div class="w-full bg-neutral-100 rounded-full h-2" aria-label="Monthly attendance">
+                <div class="h-2 rounded-full transition-all duration-300
+                            {% if child.attendance_percent >= 90 %}bg-emerald-500
+                            {% elif child.attendance_percent >= 70 %}bg-amber-400
+                            {% else %}bg-red-500{% endif %}"
+                     style="width: {{ child.attendance_percent|default:'0' }}%"></div>
+              </div>
+              {% else %}
+              <p class="text-xs text-neutral-500 italic">No records yet</p>
+              {% endif %}
+            </div>
+
+            <!-- Fees -->
+            <div class="mt-4 flex flex-wrap gap-2 text-xs">
+              <span class="inline-flex items-center gap-1 bg-danger-100 text-danger-700 px-2 py-1 rounded-full">
+                <i class="fas fa-file-invoice-dollar"></i> Unpaid {{ child.unpaid_count }}
+              </span>
+              {% if child.partial_count %}
+              <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
+                <i class="fas fa-wallet"></i> Partial {{ child.partial_count }}
+              </span>
+              {% endif %}
+              {% if child.next_due_date %}
+              <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                <i class="fas fa-calendar-day"></i> Due {{ child.next_due_date }}
+              </span>
+              {% endif %}
+              <span class="inline-flex items-center gap-1 bg-primary-50  text-primary-700 px-2 py-1 rounded-full">
+                <i class="fas fa-scale-balanced"></i> {{ child.total_balance|intcomma }} Br.
+              </span>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-4 flex justify-around">
+              <a href="#" class="flex flex-col items-center text-neutral-600 hover:text-emerald-600">
+                <i class="fas fa-calendar-check text-xl"></i><span class="text-xs">Attend</span>
+              </a>
+              <a href="#" class="flex flex-col items-center text-neutral-600 hover:text-blue-600">
+                <i class="fas fa-file-invoice-dollar text-xl"></i><span class="text-xs">Fees</span>
+              </a>
+              <a href="#" class="flex flex-col items-center text-neutral-600 hover:text-purple-600">
+                <i class="fas fa-chart-line text-xl"></i><span class="text-xs">Progress</span>
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Controls -->
+        <button id="prevBtn"
+                class="absolute left-2 top-2/3 -translate-y-1/2 bg-white border rounded-full p-0 shadow-md"
+                aria-label="Previous child">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <button id="nextBtn"
+                class="absolute right-2 top-2/3 -translate-y-1/2 bg-white border rounded-full p-0 shadow-md"
+                aria-label="Next child">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+
+        <!-- Dots -->
+        <div id="carousel-dots" class="mt-4 flex items-center justify-center gap-2" aria-label="Carousel position indicators">
+          <!-- Dots generated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- DESKTOP: Card/Table toggle -->
+    <div class="hidden md:block">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-neutral-900">Your children</h2>
+        <div class="inline-flex rounded-lg border border-neutral-200 overflow-hidden">
+          <button id="viewCardsBtn" class="px-3 py-1.5 text-sm bg-white hover:bg-neutral-50">Cards</button>
+          <button id="viewTableBtn" class="px-3 py-1.5 text-sm bg-white hover:bg-neutral-50 border-l border-neutral-200">Table</button>
+        </div>
+      </div>
+
+      <!-- Cards grid -->
+      <div id="desktopCards" class="grid grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for child in children %}
+        <div class="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-lg transition">
+          <div class="flex items-center gap-3">
+            <div class="h-12 w-12 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold">
+              {{ child.initial }}
+            </div>
+            <div class="min-w-0">
+              <div class="font-semibold text-neutral-900 truncate">{{ child.full_name }}</div>
+              <div class="text-sm text-neutral-600 truncate">{{ child.class_program }} • {{ child.division }}</div>
+            </div>
+            <div class="ml-auto">
+              {% if child.attendance_today == "present" %}
+                <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
+              {% elif child.attendance_today == "absent" %}
+                <i class="fas fa-times-circle text-red-500 text-lg"></i>
+              {% elif child.attendance_today == "partial" %}
+                <i class="fas fa-clock text-amber-400 text-lg"></i>
+              {% else %}
+                <i class="fas fa-question-circle text-neutral-300 text-lg"></i>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mt-4 border-t border-neutral-100 pt-4">
+            {% if child.attendance_percent is not none %}
+            <div class="flex items-center justify-between text-xs text-neutral-600 mb-1">
+              <span>Attendance this month</span>
+              <span class="font-semibold">{{ child.attendance_percent }}%</span>
+            </div>
+            <div class="w-full bg-neutral-100 rounded-full h-2">
+              <div class="h-2 rounded-full {% if child.attendance_percent >= 90 %}bg-emerald-500{% elif child.attendance_percent >= 70 %}bg-amber-400{% else %}bg-red-500{% endif %}"
+                   style="width: {{ child.attendance_percent|default:'0' }}%"></div>
+            </div>
+            {% else %}
+            <p class="text-xs text-neutral-500 italic">No records yet</p>
+            {% endif %}
+          </div>
+
+          <div class="mt-4 flex flex-wrap gap-2 text-xs">
+            <span class="inline-flex items-center gap-1 bg-neutral-100 text-neutral-700 px-2 py-1 rounded-full">
+              <i class="fas fa-file-invoice-dollar"></i> Unpaid {{ child.unpaid_count }}
+            </span>
+            {% if child.partial_count %}
+            <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
+              <i class="fas fa-wallet"></i> Partial {{ child.partial_count }}
+            </span>
+            {% endif %}
+            {% if child.next_due_date %}
+            <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+              <i class="fas fa-calendar-day"></i> Due {{ child.next_due_date }}
+            </span>
+            {% endif %}
+            <span class="inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2 py-1 rounded-full">
+              <i class="fas fa-scale-balanced"></i> {{ child.total_balance|intcomma }} Br.
+            </span>
+          </div>
+
+          <div class="mt-4 flex justify-around">
+            <a href="#" class="flex flex-col items-center text-neutral-600 hover:text-emerald-600">
+              <i class="fas fa-calendar-check text-xl"></i><span class="text-xs">Attend</span>
+            </a>
+            <a href="#" class="flex flex-col items-center text-neutral-600 hover:text-blue-600">
+              <i class="fas fa-file-invoice-dollar text-xl"></i><span class="text-xs">Fees</span>
+            </a>
+            <a href="#" class="flex flex-col items-center text-neutral-600 hover:text-purple-600">
+              <i class="fas fa-chart-line text-xl"></i><span class="text-xs">Progress</span>
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Table view -->
+      <div id="desktopTable" class="hidden overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <table class="min-w-full text-sm">
+          <thead class="bg-neutral-50 text-neutral-700">
+            <tr>
+              <th class="px-4 py-3 text-left">Student</th>
+              <th class="px-4 py-3 text-left">Class • Division</th>
+              <th class="px-4 py-3 text-left">Today</th>
+              <th class="px-4 py-3 text-left">Attendance %</th>
+              <th class="px-4 py-3 text-left">Unpaid</th>
+              <th class="px-4 py-3 text-left">Next due</th>
+              <th class="px-4 py-3 text-left">Balance</th>
+              <th class="px-4 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-100">
+            {% for child in children %}
+            <tr class="hover:bg-neutral-50 transition">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-bold">{{ child.initial }}</span>
+                  <span class="font-medium text-neutral-900">{{ child.full_name }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-neutral-700">{{ child.class_program }} • {{ child.division }}</td>
+              <td class="px-4 py-3">
+                {% if child.attendance_today == "present" %}
+                  <span class="inline-flex items-center gap-1 text-emerald-600"><i class="fas fa-check-circle"></i> Present</span>
+                {% elif child.attendance_today == "absent" %}
+                  <span class="inline-flex items-center gap-1 text-red-600"><i class="fas fa-times-circle"></i> Absent</span>
+                {% elif child.attendance_today == "partial" %}
+                  <span class="inline-flex items-center gap-1 text-amber-600"><i class="fas fa-clock"></i> Late / Half</span>
+                {% else %}
+                  <span class="inline-flex items-center gap-1 text-neutral-500"><i class="fas fa-question-circle"></i> Not marked</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
+                {% if child.attendance_percent is not none %}
+                <div class="w-36 bg-neutral-100 rounded-full h-2">
+                  <div class="h-2 rounded-full
+                              {% if child.attendance_percent >= 90 %}bg-emerald-500
+                              {% elif child.attendance_percent >= 70 %}bg-amber-400
+                              {% else %}bg-red-500{% endif %}"
+                       style="width: {{ child.attendance_percent }}%"></div>
+                </div>
+                {% else %}
+                  <span class="text-neutral-500">—</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">{{ child.unpaid_count }}</td>
+              <td class="px-4 py-3">{{ child.next_due_date|default:"—" }}</td>
+              <td class="px-4 py-3">{{ child.total_balance|intcomma }} Br.</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3 text-neutral-600">
+                  <a href="#" class="hover:text-emerald-600" title="Attendance"><i class="fas fa-calendar-check"></i></a>
+                  <a href="#" class="hover:text-blue-600" title="Fees"><i class="fas fa-file-invoice-dollar"></i></a>
+                  <a href="#" class="hover:text-purple-600" title="Progress"><i class="fas fa-chart-line"></i></a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Summary Cards Grid -->
+  <!-- Summary Cards Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Attendance Summary -->
+  <div class="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-calendar-alt text-primary-500 text-2xl"></i>
+        <h3 class="font-semibold text-neutral-900">Attendance</h3>
+      </div>
+      <span class="text-sm text-neutral-600">This month</span>
+    </div>
+
+    <!-- Animated percentage ring + metric -->
+    <div class="flex items-center gap-4">
+      <div class="relative h-16 w-16">
+        <svg viewBox="0 0 36 36" class="h-16 w-16 -rotate-90">
+          <path d="M18 2 a 16 16 0 0 1 0 32 a 16 16 0 0 1 0 -32"
+                fill="none" stroke="#e5e7eb" stroke-width="4"/>
+          <path id="attRing" d="M18 2 a 16 16 0 0 1 0 32 a 16 16 0 0 1 0 -32"
+                fill="none" stroke="#10b981" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="100 100" stroke-dashoffset="100"/>
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center text-sm font-semibold text-neutral-900">
+          {{ attendance_rate|default:0 }}%
+        </div>
+      </div>
+
+      <div class="flex-1">
+        <div class="text-3xl font-bold text-neutral-900">{{ absences_this_month|default:0 }}</div>
+        <p class="text-sm text-neutral-600">Absences this month</p>
+
+        <!-- Breakdown chips -->
+        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+          <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1">
+            <i class="fas fa-check-circle"></i> Present {{ presents_this_month|default:0 }}
+          </span>
+          <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1">
+            <i class="fas fa-clock"></i> Late/Half {{ late_half_this_month|default:0 }}
+          </span>
+          <span class="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 px-2.5 py-1">
+            <i class="fas fa-times-circle"></i> Absent {{ absences_this_month|default:0 }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sparkline (last 7 days placeholder) -->
+    <div class="mt-4">
+      <div class="flex items-end gap-1 h-12">
+        <div class="w-6 bg-emerald-400 h-7 rounded"></div>
+        <div class="w-6 bg-emerald-400 h-10 rounded"></div>
+        <div class="w-6 bg-red-400 h-5 rounded"></div>
+        <div class="w-6 bg-amber-400 h-8 rounded"></div>
+        <div class="w-6 bg-emerald-400 h-9 rounded"></div>
+        <div class="w-6 bg-emerald-400 h-6 rounded"></div>
+        <div class="w-6 bg-emerald-400 h-11 rounded"></div>
+      </div>
+      <div class="mt-1 text-xs text-neutral-500">Past 7 days overview</div>
+    </div>
+
+    <div class="mt-4 flex justify-end">
+      <a href="#" class="text-primary-600 text-sm font-medium hover:underline">View report</a>
+    </div>
+  </div>
+
+  <!-- Fees Overview -->
+  <div class="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm hover:shadow-lg transition-all">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-wallet text-primary-500 text-2xl"></i>
+        <h3 class="font-semibold text-neutral-900">Fees</h3>
+      </div>
+      <span class="text-sm text-neutral-600">Outstanding</span>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-3xl font-bold text-neutral-900">{{ total_outstanding|intcomma }} Br.</div>
+        <p class="text-sm text-neutral-600">Total outstanding across children</p>
+      </div>
+      <a href="#" class="px-3 py-1.5 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 text-sm font-medium">
+        Pay now
+      </a>
+    </div>
+
+    <!-- Badges -->
+    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+      <span class="inline-flex items-center gap-1 rounded-full bg-neutral-100 text-neutral-700 px-2.5 py-1">
+        <i class="fas fa-file-invoice-dollar"></i> Unpaid {{ unpaid_count|default:0 }}
+      </span>
+      {% if partial_count %}
+      <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1">
+        <i class="fas fa-wallet"></i> Partial {{ partial_count }}
+      </span>
+      {% endif %}
+      {% if next_due_date %}
+      <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-2.5 py-1">
+        <i class="fas fa-calendar-day"></i> Next due {{ next_due_date }}
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- Upcoming invoices (top 3) -->
+    {% if upcoming_invoices %}
+    <div class="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      <div class="text-sm font-medium text-neutral-800 mb-2">Upcoming</div>
+      <ul class="space-y-2 text-sm text-neutral-700">
+        {% for inv in upcoming_invoices %}
+        <li class="flex items-center justify-between">
+          <span class="truncate">
+  {{ inv.student.full_name }} — 
+  {% if inv.fee %}
+    {{ inv.fee.get_name_display }}
+  {% elif inv.description %}
+    {{ inv.description }}
+  {% else %}
+    Invoice
+  {% endif %}
+</span>
+          <span class="flex items-center gap-2">
+            <span class="text-neutral-600">{{ inv.due_date }}</span>
+            <span class="font-semibold">{{ inv.amount_due|intcomma }} Br</span>
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Animation for attendance ring -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const ring = document.getElementById("attRing");
+    if (!ring) return;
+    const pct = Number("{{ attendance_rate|default:0 }}");
+    const clamped = Math.max(0, Math.min(100, pct));
+    // Animate stroke-dashoffset from 100 -> 100 - clamped
+    const target = 100 - clamped;
+    let current = 100;
+    const step = () => {
+      current -= 2; // speed
+      if (current <= target) current = target;
+      ring.setAttribute("stroke-dashoffset", String(current));
+      if (current > target) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+</script>
+
+</div>
+
+<!-- JS: Mobile carousel + Desktop toggle -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Mobile carousel
+  const cards = document.querySelectorAll("#children-carousel .child-card");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const dotsContainer = document.getElementById("carousel-dots");
+  let current = 0;
+
+  function buildDots() {
+    dotsContainer.innerHTML = "";
+    cards.forEach((_, i) => {
+      const dot = document.createElement("button");
+      dot.className = "h-2.5 w-2.5 rounded-full bg-neutral-300 transition";
+      dot.setAttribute("aria-label", `Go to child ${i + 1}`);
+      dot.addEventListener("click", () => showCard(i, i > current ? 1 : -1));
+      dotsContainer.appendChild(dot);
+    });
+  }
+
+  function updateDots() {
+    dotsContainer.querySelectorAll("button").forEach((d, i) => {
+      d.className = "h-2.5 w-2.5 rounded-full transition " + (i === current ? "bg-primary-600" : "bg-neutral-300");
+    });
+  }
+
+  function showCard(index, direction = 1) {
+    // animate out current
+    cards.forEach((c, i) => {
+      if (i === current) {
+        c.classList.remove("opacity-100", "translate-x-0");
+        c.classList.add("opacity-0", direction === 1 ? "-translate-x-full" : "translate-x-full");
+        c.style.pointerEvents = "none";
+      }
+    });
+    // animate in new
+    const card = cards[index];
+    card.classList.remove("opacity-0", "translate-x-full", "-translate-x-full");
+    card.classList.add("opacity-100", "translate-x-0");
+    card.style.pointerEvents = "auto";
+
+    current = index;
+    updateDots();
+  }
+
+  if (cards.length) {
+    buildDots();
+    // Initialize first card visible
+    cards[0].classList.remove("opacity-0", "translate-x-full");
+    cards[0].classList.add("opacity-100", "translate-x-0");
+    cards[0].style.pointerEvents = "auto";
+    updateDots();
+  }
+
+  prevBtn?.addEventListener("click", () => {
+    const nextIndex = (current - 1 + cards.length) % cards.length;
+    showCard(nextIndex, -1);
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    const nextIndex = (current + 1) % cards.length;
+    showCard(nextIndex, 1);
+  });
+
+  // Swipe gestures
+  let startX = 0;
+  const carousel = document.getElementById("children-carousel");
+  carousel?.addEventListener("touchstart", e => startX = e.touches[0].clientX, { passive: true });
+  carousel?.addEventListener("touchend", e => {
+    const diff = e.changedTouches[0].clientX - startX;
+    if (diff > 50) prevBtn.click();
+    if (diff < -50) nextBtn.click();
+  }, { passive: true });
+
+  // Desktop toggle Cards/Table
+  const viewCardsBtn = document.getElementById("viewCardsBtn");
+  const viewTableBtn = document.getElementById("viewTableBtn");
+  const desktopCards = document.getElementById("desktopCards");
+  const desktopTable = document.getElementById("desktopTable");
+
+  function setDesktopView(mode) {
+    if (mode === "cards") {
+      desktopCards.classList.remove("hidden");
+      desktopTable.classList.add("hidden");
+      viewCardsBtn.classList.add("bg-primary-50", "text-primary-700");
+      viewTableBtn.classList.remove("bg-primary-50", "text-primary-700");
+    } else {
+      desktopCards.classList.add("hidden");
+      desktopTable.classList.remove("hidden");
+      viewTableBtn.classList.add("bg-primary-50", "text-primary-700");
+      viewCardsBtn.classList.remove("bg-primary-50", "text-primary-700");
+    }
+  }
+
+  viewCardsBtn?.addEventListener("click", () => setDesktopView("cards"));
+  viewTableBtn?.addEventListener("click", () => setDesktopView("table"));
+
+  // Default to cards on desktop
+  setDesktopView("cards");
+});
+</script>
+{% endblock %}

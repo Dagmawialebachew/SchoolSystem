@@ -1,0 +1,546 @@
+{# templates/attendance/analytics_dashboard.html #}
+{% extends "base.html" %}
+{% block title %}Attendance Analytics{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-white text-neutral-900 py-6 px-4 sm:px-6">
+ <a href="{% url 'attendance:list' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-100 hover:bg-neutral-200 text-sm text-neutral-700 focus:outline-none"
+         title="Back to attendance list">
+        <i class="fas fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back</span>
+      </a>
+  <!-- Tips (dismissible) -->
+  <div id="tipsBar" class="mb-4 rounded-lg bg-indigo-50 border border-indigo-100 p-3 shadow-sm flex items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
+      <span class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-indigo-100 text-indigo-600">
+        <i class="fas fa-info-circle"></i>
+      </span>
+      <div>
+        <p class="font-medium text-neutral-900">Quick tips</p>
+        <p class="text-sm text-neutral-600">Adjust date, class, or tap a status pill to filter. Charts update live.</p>
+      </div>
+    </div>
+    <button id="dismissTips" class="text-neutral-500 hover:text-neutral-700 text-lg" aria-label="Dismiss tips">&times;</button>
+  </div>
+
+  <!-- Header + Filters -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold flex items-center gap-3">
+        <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600">
+          <i class="fas fa-chart-line"></i>
+        </span>
+        Attendance Analytics
+      </h1>
+      <p class="text-sm text-neutral-600 mt-1">Live analytics — trends, breakdowns & top absentees.</p>
+    </div>
+
+    <!-- Filters box (desktop inline, mobile vertical) -->
+    <div class="w-full sm:w-auto">
+      <div class="bg-white border border-neutral-200 rounded-lg p-3 shadow-sm flex flex-col sm:flex-row sm:items-center gap-2">
+        <input type="hidden" id="initialQuery" value="{{ request.GET.urlencode }}">
+
+        <label class="relative flex-1 sm:flex-initial">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"><i class="fas fa-calendar-alt"></i></span>
+          <input id="filterStart" name="start" type="date" value="{{ request.GET.start|default:'' }}"
+                 class="w-full pl-10 pr-3 py-2 border rounded-md text-sm text-neutral-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                 aria-label="Start date">
+        </label>
+
+        <label class="relative flex-1 sm:flex-initial">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"><i class="fas fa-calendar-alt"></i></span>
+          <input id="filterEnd" name="end" type="date" value="{{ request.GET.end|default:'' }}"
+                 class="w-full pl-10 pr-3 py-2 border rounded-md text-sm text-neutral-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                 aria-label="End date">
+        </label>
+
+     <div class="flex flex-wrap gap-4">
+  <!-- Division Filter -->
+  <label class="relative flex-1 sm:w-64">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"><i class="fas fa-layer-group"></i></span>
+    <select id="filterDivision" name="division_id"
+            class="w-full pl-10 pr-3 py-2 border rounded-md text-sm text-neutral-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            aria-label="Filter by division">
+      <option value="">All divisions</option>
+      {% for d in divisions %}
+        <option value="{{ d.id }}" {% if request.GET.division_id == d.id|stringformat:"s" %}selected{% endif %}>
+          {{ d.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <!-- Class Filter -->
+  <label class="relative flex-1 sm:w-64">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"><i class="fas fa-school"></i></span>
+    <select id="filterClass" name="class_id"
+            class="w-full pl-10 pr-3 py-2 border rounded-md text-sm text-neutral-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            aria-label="Filter by class">
+      <option value="">All classes</option>
+      {% for c in classes %}
+        <option value="{{ c.id }}" data-division="{{ c.division.id }}"
+                {% if request.GET.class_id == c.id|stringformat:"s" %}selected{% endif %}>
+          {{ c.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+
+        <button id="btnClear" class="ml-auto inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm text-neutral-700 bg-neutral-50 hover:bg-neutral-100 focus:outline-none"
+                aria-label="Clear filters">
+          <i class="fas fa-eraser"></i>
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status pills (mobile friendly) -->
+  <div class="flex flex-wrap gap-3 mb-6" role="tablist" aria-label="Status filters">
+    <button class="status-pill inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm bg-white border-neutral-200 shadow-sm focus:outline-none"
+            data-status="PRESENT" title="Filter Present" type="button">
+      <i class="fas fa-user-check text-emerald-600"></i>
+      <span class="text-neutral-800">Present</span>
+      <span id="countPresent" class="ml-2 font-semibold text-neutral-900">{{ total_students|default:"—" }}</span>
+    </button>
+
+    <button class="status-pill inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm bg-white border-neutral-200 shadow-sm focus:outline-none"
+            data-status="ABSENT" title="Filter Absent" type="button">
+      <i class="fas fa-user-times text-red-600"></i>
+      <span class="text-neutral-800">Absent</span>
+      <span id="countAbsent" class="ml-2 font-semibold text-neutral-900">—</span>
+    </button>
+
+    <button class="status-pill inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm bg-white border-neutral-200 shadow-sm focus:outline-none"
+            data-status="LATE" title="Filter Late" type="button">
+      <i class="fas fa-clock text-yellow-600"></i>
+      <span class="text-neutral-800">Late</span>
+      <span id="countLate" class="ml-2 font-semibold text-neutral-900">—</span>
+    </button>
+
+    <button class="status-pill inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm bg-white border-neutral-200 shadow-sm focus:outline-none"
+            data-status="HALF_DAY" title="Filter Half Day" type="button">
+      <i class="fas fa-user-shield text-sky-600"></i>
+      <span class="text-neutral-800">Half-Day</span>
+      <span id="countHalfDay" class="ml-2 font-semibold text-neutral-900">—</span>
+    </button>
+
+    <button class="status-pill inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm bg-white border-neutral-200 shadow-sm focus:outline-none"
+            data-status="" title="Show all" type="button">
+      <i class="fas fa-list text-neutral-600"></i>
+      <span class="text-neutral-800">All</span>
+      <span id="countTotal" class="ml-2 font-semibold text-neutral-900">—</span>
+    </button>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <div class="text-sm text-neutral-500">Students</div>
+      <div id="summaryStudents" class="mt-2 text-2xl font-bold text-neutral-900">{{ total_students|default:"—" }}</div>
+    </div>
+
+    <div class="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <div class="text-sm text-neutral-500">Avg attendance</div>
+      <div id="summaryAvg" class="mt-2 text-2xl font-bold text-neutral-900">{{ avg_attendance|default:"—" }}%</div>
+    </div>
+
+    <div class="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <div class="text-sm text-neutral-500">Absences</div>
+      <div id="summaryAbs" class="mt-2 text-2xl font-bold text-neutral-900">{{ total_absences|default:"—" }}</div>
+    </div>
+
+    <div class="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <div class="text-sm text-neutral-500">Late</div>
+      <div id="summaryLate" class="mt-2 text-2xl font-bold text-neutral-900">{{ late_count|default:"—" }}</div>
+    </div>
+  </div>
+
+  <!-- Charts + Top absent table -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <h3 class="text-lg font-semibold mb-3">Attendance trend</h3>
+      <div class="h-64">
+        <canvas id="trendChart" class="w-full h-full"></canvas>
+      </div>
+
+      <hr class="my-4">
+
+      <h3 class="text-lg font-semibold mb-3">Status breakdown</h3>
+      <div class="h-56">
+        <canvas id="stackedChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+
+    <aside class="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <h4 class="text-md font-semibold mb-3">Top 5 absent students</h4>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-neutral-600">
+            <th>Name</th>
+            <th class="text-right">Absences</th>
+          </tr>
+        </thead>
+        <tbody id="topAbsentBody">
+          <tr><td class="py-2 text-neutral-500" colspan="2">Loading…</td></tr>
+        </tbody>
+      </table>
+    </aside>
+  </div>
+
+</div>
+
+{# Chart.js (CDN) - ensure this is allowed by your CSP #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+{# Tailwind-color map for charts (keeps colors consistent with UI) #}
+<script>
+  // Map of colors (Tailwind defaults) — adapt if your theme changes
+  window.__twColors = {
+    ACCENT: '#2563EB',
+    PRESENT: '#16A34A',
+    ABSENT: '#EF4444',
+    LATE: '#F59E0B',
+    HALF_DAY: '#3B82F6',
+    MUTED: '#6B7280',
+    TEXT: '#0F172A'
+  };
+</script>
+
+{# Analytics script: live filters, debounced, Chart.js render, animate counters #}
+<script>
+(() => {
+  'use strict';
+
+  const API = "{% url 'attendance:attendance_analytics_data' %}";
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // DOM
+  const startEl = $('#filterStart');
+  const endEl = $('#filterEnd');
+  const classEl = $('#filterClass');
+  const btnClear = $('#btnClear');
+
+  const statusPills = $$('.status-pill[data-status], .status-pill[role="button"][data-status]');
+  const topAbsentBody = $('#topAbsentBody');
+
+  const els = {
+    summaryStudents: $('#summaryStudents'),
+    summaryAvg: $('#summaryAvg'),
+    summaryAbs: $('#summaryAbs'),
+    summaryLate: $('#summaryLate'),
+    countTotal: $('#countTotal'),
+    countPresent: $('#countPresent'),
+    countAbsent: $('#countAbsent'),
+    countLate: $('#countLate'),
+    countHalfDay: $('#countHalfDay')
+  };
+
+  const trendCanvas = $('#trendChart');
+  const stackedCanvas = $('#stackedChart');
+  const trendCtx = trendCanvas && trendCanvas.getContext('2d');
+  const stackedCtx = stackedCanvas && stackedCanvas.getContext('2d');
+
+  let trendChart = null;
+  let stackedChart = null;
+
+  // helpers
+  const safe = (v, d) => (v === undefined || v === null) ? d : v;
+  const debounce = (fn, ms=350) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+
+  function animateCount(el, to, opts={}) {
+    if (!el) return;
+    const duration = opts.duration || 700;
+    const start = parseFloat(el.dataset.current || '0') || 0;
+    const end = Number(to) || 0;
+    if (start === end) { el.textContent = opts.fixed ? Number(end).toFixed(opts.fixed) : String(end); el.dataset.current = String(end); return; }
+    const startTime = performance.now();
+    function step(now){
+      const t = Math.min(1, (now - startTime)/duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const curr = start + (end - start) * eased;
+      el.textContent = opts.fixed ? curr.toFixed(opts.fixed) : (Math.round(curr*10)/10);
+      if (t < 1) requestAnimationFrame(step); else el.dataset.current = String(end);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // build url with params (reads active pill)
+  function buildUrl() {
+    const params = new URLSearchParams();
+    if (startEl && startEl.value) params.set('start', startEl.value);
+    if (endEl && endEl.value) params.set('end', endEl.value);
+    if (classEl && classEl.value) params.set('class_id', classEl.value);
+    const active = document.querySelector('.status-pill.active[data-status]');
+    if (active) params.set('status', active.dataset.status || '');
+    const q = params.toString();
+    return q ? `${API}?${q}` : API;
+  }
+
+  // render top absent
+  function renderTopAbsent(list) {
+    if (!topAbsentBody) return;
+    topAbsentBody.innerHTML = '';
+    if (!Array.isArray(list) || list.length === 0) {
+      topAbsentBody.insertAdjacentHTML('beforeend', '<tr><td class="py-2 text-neutral-500" colspan="2">No data</td></tr>');
+      return;
+    }
+    list.forEach(item => {
+      const name = safe(item.name, item.student || '—');
+      const absences = safe(item.absences, 0);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="py-2 text-neutral-800">${name}</td><td class="py-2 text-right text-neutral-800">${absences}</td>`;
+      topAbsentBody.appendChild(tr);
+    });
+  }
+
+  // chart helpers
+  function trendGradient(ctx, height) {
+    const g = ctx.createLinearGradient(0,0,0,height || 200);
+    g.addColorStop(0, window.__twColors.ACCENT + '33'); // ~20% alpha
+    g.addColorStop(1, window.__twColors.ACCENT + '06'); // ~4% alpha
+    return g;
+  }
+
+  // trend
+  function updateTrend(payload) {
+    const labels = safe(payload.labels, []);
+    const values = safe(payload.values, []);
+    if (!trendCtx) return;
+
+    if (!trendChart) {
+      const gradient = trendGradient(trendCtx, trendCanvas.clientHeight || 220);
+      trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Attendance %',
+            data: values,
+            borderColor: window.__twColors.ACCENT,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.36,
+            pointRadius: 3,
+            borderWidth: 2.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { mode: 'index', intersect: false, backgroundColor: '#fff', titleColor: '#000', bodyColor:'#000', borderColor:'rgba(0,0,0,0.06)', borderWidth:1 }
+          },
+          scales: {
+            x: { ticks: { color: window.__twColors.MUTED }, grid: { color: 'rgba(0,0,0,0.03)' } },
+            y: { beginAtZero: true, max: 100, ticks:{ color: window.__twColors.MUTED, callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,0.03)' } }
+          }
+        }
+      });
+    } else {
+      trendChart.data.labels = labels;
+      trendChart.data.datasets[0].data = values;
+      trendChart.update();
+    }
+  }
+
+  // stacked
+  function updateStacked(payload) {
+    const labels = safe(payload.labels, []);
+    const datasets = safe(payload.datasets, []);
+    if (!stackedCtx) return;
+
+    const chartDatasets = datasets.map(ds => ({
+      label: ds.label,
+      data: ds.data,
+      backgroundColor: ({
+        PRESENT: window.__twColors.PRESENT,
+        ABSENT: window.__twColors.ABSENT,
+        LATE: window.__twColors.LATE,
+        HALF_DAY: window.__twColors.HALF_DAY
+      })[ds.label] || window.__twColors.MUTED,
+      borderRadius: 8
+    }));
+
+    if (!stackedChart) {
+      stackedChart = new Chart(stackedCtx, {
+        type: 'bar',
+        data: { labels, datasets: chartDatasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { mode: 'index', intersect:false } },
+          scales: { x: { stacked: true, ticks: { color: window.__twColors.MUTED }, grid: { color: 'rgba(0,0,0,0.03)' } }, y: { stacked: true, ticks: { color: window.__twColors.MUTED }, grid: { color: 'rgba(0,0,0,0.03)' } } }
+        }
+      });
+    } else {
+      stackedChart.data.labels = labels;
+      stackedChart.data.datasets = chartDatasets;
+      stackedChart.update();
+    }
+  }
+
+  // update KPIs
+  function updateKPIs(summary) {
+    if (!summary) return;
+    animateCount(els.summaryStudents, summary.students || 0);
+    animateCount(els.summaryAvg, summary.avg || 0, { fixed: 1 });
+    animateCount(els.summaryAbs, summary.absences || 0);
+    animateCount(els.summaryLate, summary.late || 0);
+    animateCount(els.countTotal, summary.total || 0);
+    animateCount(els.countPresent, summary.present || 0);
+    animateCount(els.countAbsent, summary.absences || 0);
+    animateCount(els.countLate, summary.late || 0);
+    animateCount(els.countHalfDay, summary.half_day || 0);
+  }
+
+  // main fetch & render
+  let latest = 0;
+  async function fetchAndRender() {
+    const stamp = ++latest;
+    const url = buildUrl();
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Bad response ' + res.status);
+      const data = await res.json();
+      if (stamp !== latest) return; // stale
+      const summary = safe(data.summary, {});
+      const trend = safe(data.trend, { labels:[], values:[] });
+      const stacked = safe(data.stacked, { labels:[], datasets:[] });
+      const top_absent = safe(data.top_absent, []);
+      updateKPIs(summary);
+      updateTrend(trend);
+      updateStacked(stacked);
+      renderTopAbsent(top_absent);
+
+      // update URL (reflect filters) without reloading
+      try {
+        const u = new URL(url);
+        history.replaceState(null, '', window.location.pathname + (u.search ? '?' + u.searchParams.toString() : ''));
+      } catch(e){}
+    } catch (err) {
+      console.error('Analytics fetch error', err);
+    }
+  }
+
+  // debounce helper
+  const debounced = debounce(fetchAndRender, 300);
+
+  // wiring
+  if (startEl) startEl.addEventListener('change', debounced, { passive:true });
+  if (endEl) endEl.addEventListener('change', debounced, { passive:true });
+  if (classEl) classEl.addEventListener('change', debounced, { passive:true });
+
+  // pill click toggles active (single-select)
+  statusPills.forEach(p => {
+    p.addEventListener('click', () => {
+      const already = p.classList.contains('active');
+      // clear current active
+      document.querySelectorAll('.status-pill.active').forEach(x => x.classList.remove('active', 'ring', 'ring-indigo-500'));
+      if (!already) {
+        p.classList.add('active', 'ring', 'ring-indigo-500');
+      }
+      debounced();
+    }, { passive:true });
+
+    p.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); p.click(); }
+    });
+  });
+
+  // hydrate pill from ?status=...
+  (function hydrate() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get('status') || '';
+      if (s) {
+        const pill = document.querySelector('.status-pill[data-status="'+s+'"]');
+        if (pill) pill.classList.add('active', 'ring', 'ring-indigo-500');
+      }
+    } catch(e){}
+  })();
+
+  // clear button
+  btnClear?.addEventListener('click', () => {
+    if (startEl) startEl.value = '';
+    if (endEl) endEl.value = '';
+    if (classEl) classEl.value = '';
+    document.querySelectorAll('.status-pill.active').forEach(x => x.classList.remove('active', 'ring', 'ring-indigo-500'));
+    history.replaceState(null, '', window.location.pathname);
+    fetchAndRender();
+  }, { passive:true });
+
+  // tips persistent dismissal
+  const tips = document.getElementById('tipsBar');
+  const dismiss = document.getElementById('dismissTips');
+  try {
+    if (localStorage.getItem('attendance_tips_dismissed') === '1') tips?.remove();
+    else dismiss?.addEventListener('click', () => {
+      try { localStorage.setItem('attendance_tips_dismissed', '1'); } catch(e){}
+      tips?.classList.add('opacity-0'); setTimeout(()=> tips?.remove(), 180);
+    });
+  } catch(e){}
+
+  // initial fetch (small delay to let paint)
+  setTimeout(fetchAndRender, 120);
+
+  // expose for debugging / other scripts
+  window.fetchAndRender = fetchAndRender;
+
+  // animateCount helper (reused)
+  function animateCount(el, to, opts={}) {
+    if (!el) return;
+    const duration = opts.duration || 700;
+    const start = parseFloat(el.dataset.current || '0') || 0;
+    const end = Number(to) || 0;
+    if (start === end) { el.textContent = opts.fixed ? Number(end).toFixed(opts.fixed) : String(end); el.dataset.current = String(end); return; }
+    const startTime = performance.now();
+    function step(now){
+      const t = Math.min(1, (now - startTime)/duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const curr = start + (end - start) * eased;
+      el.textContent = opts.fixed ? curr.toFixed(opts.fixed) : (Math.round(curr*10)/10);
+      if (t < 1) requestAnimationFrame(step); else el.dataset.current = String(end);
+    }
+    requestAnimationFrame(step);
+  }
+
+})();
+</script>
+
+
+<script>
+(function() {
+  const divisionSelect = document.getElementById('filterDivision');
+  const classSelect = document.getElementById('filterClass');
+
+  function filterClasses() {
+    const selectedDivision = divisionSelect.value;
+    Array.from(classSelect.options).forEach(opt => {
+      const divId = opt.dataset.division;
+      if (!selectedDivision || divId === selectedDivision) {
+        opt.hidden = false;
+      } else {
+        opt.hidden = true;
+        if (opt.selected) opt.selected = false;
+      }
+    });
+  }
+
+  divisionSelect.addEventListener('change', () => {
+    filterClasses();
+    classSelect.value = ""; // Reset class selection on division change
+  });
+
+  // Initial filter on page load
+  filterClasses();
+})();
+</script>
+
+
+{% endblock %}

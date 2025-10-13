@@ -1,4 +1,7 @@
 from django import forms
+from dal import autocomplete
+from dal_select2.widgets import ModelSelect2
+from students.models import Student
 from .models import FeeStructure, Invoice
 from classes_app.models import Division, ClassProgram
 from django.utils import timezone
@@ -41,7 +44,70 @@ class FeeForm(forms.ModelForm):
 # ----------------------
 #  INVOICE FORM
 # ----------------------
+from django import forms
+from .models import Invoice, FeeStructure
+from students.models import Student
+
 class InvoiceForm(forms.ModelForm):
+    class Meta:
+        model = Invoice
+        fields = ["student", "fee", "amount_due", "amount_paid", "status", "due_date"]
+        widgets = {
+            "student": forms.Select(attrs={"class": "form-select w-full"}),
+            "fee": forms.Select(attrs={"class": "form-select w-full"}),
+            "amount_due": forms.NumberInput(attrs={"class": "form-input w-full", "placeholder": "Enter amount due"}),
+            "amount_paid": forms.NumberInput(attrs={"class": "form-input w-full", "placeholder": "Enter amount paid"}),
+            "status": forms.Select(attrs={"class": "form-select w-full"}),
+            "due_date": forms.DateInput(attrs={"type": "date", "class": "form-input w-full"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Filter students & fees by the user's school
+        if user and hasattr(user, "school"):
+            self.fields["student"].queryset = Student.objects.filter(school=user.school)
+            self.fields["fee"].queryset = FeeStructure.objects.filter(school=user.school)
+        else:
+            self.fields["student"].queryset = Student.objects.none()
+            self.fields["fee"].queryset = FeeStructure.objects.none()
+
+        # Use readable labels
+        self.fields["student"].label_from_instance = lambda obj: obj.full_name
+        self.fields["fee"].label_from_instance = lambda obj: obj.name
+    class Meta:
+        model = Invoice
+        student = forms.ModelChoiceField(
+        queryset=Student.objects.none(),
+        widget=ModelSelect2(
+            url='student-autocomplete',
+            attrs={'class': 'form-select w-full'}
+        )
+    )
+        fields = ["student", "fee", "amount_due", "amount_paid", "status", "due_date"]
+        widgets = {
+            "student": forms.Select(attrs={"class": "form-select w-full"}),
+            "fee": forms.Select(attrs={"class": "form-select w-full"}),
+            "amount_due": forms.NumberInput(attrs={"class": "form-input w-full", "placeholder": "Enter amount due"}),
+            "amount_paid": forms.NumberInput(attrs={"class": "form-input w-full", "placeholder": "Enter amount paid"}),
+            "status": forms.Select(attrs={"class": "form-select w-full"}),
+            "due_date": forms.DateInput(attrs={"type": "date", "class": "form-input w-full"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            self.fields['fee'].queryset = FeeStructure.objects.filter(school=user.school)
+            self.fields['student'].queryset = Student.objects.filter(school=user.school)
+        else:
+            self.fields['fee'].queryset = FeeStructure.objects.none()
+            self.fields['student'].queryset = Student.objects.none()
+
+        self.fields['fee'].label_from_instance = lambda obj: obj.name
+        self.fields['student'].label_from_instance = lambda obj: obj.full_name
     class Meta:
         model = Invoice
         fields = [

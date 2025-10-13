@@ -1,0 +1,64 @@
+<!-- bottom_nav_items.html -->
+
+<!-- Home -->
+<li class="flex-1">
+  <a href="{% url 'parents:dashboard' %}" 
+     class="flex flex-col items-center py-3 text-neutral-600 hover:text-primary-600 transition-all duration-150
+            {% if request.resolver_match.url_name == 'dashboard' %}text-primary-600 scale-110{% endif %}">
+    <div class="p-2 rounded-full hover:bg-primary-50">
+      <i class="fas fa-home text-xl"></i>
+    </div>
+    <span class="text-xs mt-1">Home</span>
+  </a>
+</li>
+
+<!-- Kids -->
+<li class="flex-1">
+  <a href="{% url 'parents:kids' %}#children" 
+     class="flex flex-col items-center py-3 text-neutral-600 hover:text-primary-600 transition-all duration-150
+            {% if request.resolver_match.url_name == 'kids' %}text-primary-600 scale-110{% endif %}">
+    <div class="p-2 rounded-full hover:bg-primary-50">
+      <i class="fas fa-child text-xl"></i>
+    </div>
+    <span class="text-xs mt-1">Kids</span>
+  </a>
+</li>
+
+<!-- Fees -->
+<li class="flex-1">
+  <a href="{% url 'parents:fees' %}" 
+     class="flex flex-col items-center py-3 text-neutral-600 hover:text-primary-600 transition-all duration-150
+            {% if request.resolver_match.url_name == 'fees' %}text-primary-600 scale-110{% endif %}">
+    <div class="p-2 rounded-full hover:bg-primary-50">
+      <i class="fas fa-wallet text-xl"></i>
+    </div>
+    <span class="text-xs mt-1">Fees</span>
+  </a>
+</li>
+
+<!-- Reports -->
+<li class="flex-1 ">
+  <a href="{% url 'notifications:list' %}" 
+     class="flex flex-col items-center py-3 text-neutral-600 hover:text-primary-600 transition-all duration-150
+            {% if request.resolver_match.url_name == 'notifications:list' %}text-primary-600 scale-110{% endif %}">
+    <div class="p-2 relative rounded-full hover:bg-primary-50">
+       <span class="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-600 text-white text-xs">
+        {{ unread_announcements_count|default:0 }}
+      </span>
+      <i class="fas fa-bell text-xl"></i>
+    </div>
+    <span class="text-xs mt-1">Notifications</span>
+  </a>
+</li>
+
+<!-- Profile -->
+<li class="flex-1">
+  <a href="{% url 'parents:profile' %}" 
+     class="flex flex-col items-center py-3 text-neutral-600 hover:text-primary-600 transition-all duration-150
+            {% if request.resolver_match.url_name == 'profile' %}text-primary-600 scale-110{% endif %}">
+    <div class="p-2 rounded-full hover:bg-primary-50">
+      <i class="fas fa-user-circle text-xl"></i>
+    </div>
+    <span class="text-xs mt-1">Profile</span>
+  </a>
+</li>

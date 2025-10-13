@@ -1,0 +1,27 @@
+
+{% extends "base.html" %}
+{% block title %}Delete {{ school.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto bg-white rounded-xl shadow-sm p-6 border border-neutral-200">
+  <h1 class="text-lg font-semibold text-neutral-900 mb-2">Delete announcement</h1>
+  <p class="text-sm text-neutral-700">
+    Are you sure you want to delete
+    <span class="font-medium">“{{ object.title }}”</span>?
+    This action cannot be undone.
+  </p>
+
+  <div class="mt-4 flex items-center gap-2">
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700">
+        Delete
+      </button>
+    </form>
+    <a href="{% url 'notifications:list' %}"
+       class="px-3 py-2 rounded-lg border border-neutral-200 text-sm hover:bg-neutral-50">
+      Cancel
+    </a>
+  </div>
+</div>
+{% endblock %}

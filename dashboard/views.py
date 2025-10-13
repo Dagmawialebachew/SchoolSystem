@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.db.models import Count, Sum, Q, F
+from django.urls import reverse_lazy
 from django.utils import timezone
 from datetime import timedelta
 from students.models import Student
@@ -53,9 +54,9 @@ class SchoolAdminDashboardView(RoleRequiredMixin, TemplateView):
         month_start = today.replace(day=1)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
-        context['fees_due_this_month'] = Payment.objects.for_user(user).filter(
-    invoice__due_date__month=today.month,
-    invoice__due_date__year=today.year).aggregate(total=Sum('amount'))['total'] or 0
+        context['fees_due_this_month'] = Invoice.objects.for_user(user).filter(
+    due_date__month=today.month,
+    due_date__year=today.year).aggregate(total=Sum('amount_due'))['total'] or 0
 
         return context
 
@@ -123,7 +124,7 @@ def dashboard(request):
     elif request.user.is_teacher():
         return TeacherDashboardView.as_view()(request)
     elif request.user.is_parent():
-        return ParentDashboardView.as_view()(request)
+        return reverse_lazy('parents:dashboard')
     elif request.user.role == "SUPER_ADMIN":
         return AdminDashboardView.as_view()(request)
     else:
@@ -134,8 +135,8 @@ def dashboard(request):
 
 @login_required
 def fees_status_chart(request):
-    if not request.user.is_school_admin():
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    # if not request.user.is_school_admin():
+    #     return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     data = Invoice.objects.for_user(request.user).values('status').annotate(
         count=Count('id')
@@ -155,8 +156,8 @@ def fees_status_chart(request):
 from datetime import date
 @login_required
 def monthly_collections_chart(request):
-    if not request.user.is_school_admin():
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    # if not request.user.is_school_admin():
+    #     return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     today = timezone.now().date()
     months_data = []
@@ -166,7 +167,7 @@ def monthly_collections_chart(request):
 
         total = Payment.objects.filter(
             invoice__school=request.user.school,
-            paid_on__date__range=[month_start, month_end]
+            paid_on__date__range=[month_start, month_end], status = 'CONFIRMED'
         ).aggregate(total=Sum('amount'))['total'] or 0
                 
 
@@ -187,8 +188,8 @@ def monthly_collections_chart(request):
 
 @login_required
 def students_by_division_chart(request):
-    if not request.user.is_school_admin():
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    # if not request.user.is_school_admin():
+    #     return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     data = Division.objects.for_user(request.user).annotate(
         student_count=Count('students')
@@ -205,11 +206,11 @@ def students_by_division_chart(request):
 
 @login_required
 def revenue_trend_chart(request):
-    if not request.user.is_school_admin():
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    # if not request.user.is_school_admin():
+    #     return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     payments = (
-        Payment.objects.filter(school=request.user.school)
+        Payment.objects.filter(school=request.user.school, status = 'CONFIRMED')
         .annotate(month=TruncMonth('paid_on'))
         .values('month')
         .annotate(total=Sum('amount'))
@@ -230,8 +231,8 @@ def revenue_trend_chart(request):
 
 @login_required
 def invoice_status_chart(request):
-    if not request.user.is_school_admin():
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    # if not request.user.is_school_admin():
+    #     return JsonResponse({'error': 'Unauthorized'}, status=403)
 
     total_paid = Invoice.objects.filter(status='PAID', school=request.user.school).count()
     total_unpaid = Invoice.objects.filter(status='UNPAID', school=request.user.school).count()
@@ -255,11 +256,16 @@ def invoice_status_chart(request):
 @login_required
 def fees_summary_api(request):
     """Return summary metrics for dashboard cards."""
-    if not request.user.is_school_admin():
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    # if not request.user.is_school_admin():
+    #     return JsonResponse({'error': 'Unauthorized'}, status=403)
 
-    total_revenue = Payment.objects.filter(school = request.user.school).aggregate(total=Sum('amount'))['total'] or 0
-    paid_invoices = Invoice.objects.filter(status='PAID', school = request.user.school).count()
+    total_revenue = Payment.objects.filter(school = request.user.school, status = 'CONFIRMED').aggregate(total=Sum('amount'))['total'] or 0
+    paid_invoices = Invoice.objects.filter(payments__status='CONFIRMED', school = request.user.school).count()
+    unconfirmed_invoices = Invoice.objects.filter(
+        school=request.user.school, status = 'PAID'
+    ).exclude(
+        payments__status='CONFIRMED'
+    ).distinct().count()    
     pending_invoices = Invoice.objects.filter(status='UNPAID', school = request.user.school).count()
     total_unpaid = Invoice.objects.filter(status='UNPAID', school = request.user.school).aggregate(total = Sum('amount_due'))['total'] or 0
     # total_unpaid = Invoice.objects.filter(~Q(status='UNPAID'), school = request.user.school).aggregate(
@@ -268,9 +274,9 @@ def fees_summary_api(request):
     data = {
         "total_revenue": total_revenue,
         "paid_invoices": paid_invoices,
+        "unconfirmed_invoices": unconfirmed_invoices,
         "pending_invoices": pending_invoices,
         "total_unpaid": total_unpaid
     }
-    print(data)
     return JsonResponse(data)
 

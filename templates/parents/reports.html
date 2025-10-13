@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Parent Reports — SchoolSystem{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 space-y-8">
+
+  <!-- Header -->
+  <header class="text-center sm:text-left">
+    <h1 class="font-montserrat font-bold text-gray-900 text-[clamp(1.75rem,4vw,2.5rem)]">
+      Reports
+    </h1>
+    <p class="text-gray-600 text-sm sm:text-base">
+      A futuristic summary of your children’s attendance and payments
+    </p>
+  </header>
+
+  {% if children_data %}
+  <!-- Summary Cards -->
+  <section class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Children -->
+    <div class="p-4 rounded-2xl bg-white/70 backdrop-blur border shadow-sm hover:shadow-md transition">
+      <h3 class="text-xs uppercase tracking-wide text-gray-500">Children</h3>
+      <p class="text-3xl font-bold text-gray-900 mt-1">{{ children_data|length }}</p>
+    </div>
+
+    <!-- Unpaid -->
+    <div class="p-4 rounded-2xl border shadow-sm hover:shadow-md transition
+                {% if total_unpaid > 5 %}bg-red-50 border-red-200{% else %}bg-white/70 backdrop-blur{% endif %}">
+      <h3 class="text-xs uppercase tracking-wide text-gray-500">Unpaid Invoices</h3>
+      <p class="text-3xl font-bold text-red-600 mt-1">{{ total_unpaid }}</p>
+    </div>
+
+    <!-- Paid -->
+    <div class="p-4 rounded-2xl bg-green-50 border-green-200 border shadow-sm hover:shadow-md transition">
+      <h3 class="text-xs uppercase tracking-wide text-gray-500">Total Paid</h3>
+      <p class="text-3xl font-bold text-green-700 mt-1">{{ total_paid|intcomma }} Br</p>
+    </div>
+
+    <!-- Balance -->
+    <div class="p-4 rounded-2xl border shadow-sm hover:shadow-md transition
+                {% if total_balance > 10000 %}bg-yellow-50 border-yellow-200{% else %}bg-white/70 backdrop-blur{% endif %}">
+      <h3 class="text-xs uppercase tracking-wide text-gray-500">Outstanding Balance</h3>
+      <p class="text-3xl font-bold text-yellow-700 mt-1">{{ total_balance|intcomma }} Br</p>
+    </div>
+  </section>
+
+  <!-- Attendance Trend -->
+  <section class="p-4 rounded-2xl bg-white/70 backdrop-blur border shadow-sm hover:shadow-md transition">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Attendance Trend</h3>
+    <div class="relative w-full h-64 sm:h-80">
+      <canvas id="attendanceChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Payment Status -->
+  <section class="p-4 rounded-2xl bg-white/70 backdrop-blur border shadow-sm hover:shadow-md transition">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Payment Status</h3>
+    <div class="relative w-full h-64 sm:h-80">
+      <canvas id="paymentPieChart"></canvas>
+    </div>
+    <p class="text-xs text-gray-400 mt-2 text-center sm:text-left">Tap slices for details</p>
+  </section>
+
+
+
+  {% else %}
+  <div class="p-6 rounded-2xl bg-white/70 backdrop-blur border text-center text-gray-500">
+    No data available to display reports.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Chart.js -->
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
+  new Chart(attendanceCtx, {
+    type: 'line',
+    data: {
+      labels: {{ attendance_labels|safe }},
+      datasets: [{
+        label: 'Attendance %',
+        data: {{ attendance_values|safe }},
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16,185,129,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, max: 100 } }
+    }
+  });
+
+  const paymentCtx = document.getElementById('paymentPieChart').getContext('2d');
+  new Chart(paymentCtx, {
+    type: 'doughnut',
+    data: {
+      labels: {{ payment_labels|safe }},
+      datasets: [{
+        data: {{ payment_values|safe }},
+        backgroundColor: ['#10B981','#F59E0B','#EF4444','#3B82F6'],
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12 } },
+        tooltip: { enabled: true }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

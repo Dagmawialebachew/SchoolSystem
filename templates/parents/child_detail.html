@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}{{ child.full_name }}{% endblock %}
+{% load humanize %}
+{% block content %}
+<div class="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-neutral-900">{{ child.full_name }}</h1>
+      <p class="text-sm text-neutral-600">{{ child.class_program.name }} • {{ child.division.name }}</p>
+      
+      <!-- Status badges -->
+      <div class="mt-2 flex flex-wrap gap-2 text-xs">
+        {% if total_balance > 0 %}
+          <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-full">
+            <i class="fas fa-exclamation-circle"></i> Balance: {{ total_balance|intcomma }} Br
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full">
+            <i class="fas fa-check-circle"></i> No outstanding fees
+          </span>
+        {% endif %}
+        {% if attendance_records %}
+          <span class="inline-flex items-center gap-1 bg-neutral-100 text-neutral-700 px-2.5 py-1 rounded-full">
+            <i class="fas fa-calendar-check"></i> Recent attendance available
+          </span>
+        {% endif %}
+      </div>
+    </div>
+    <a href="{% url 'parents:kids' %}" class="text-primary-600 text-sm hover:underline">← Back</a>
+  </div>
+
+  <!-- Tabs -->
+  <div>
+    <div class="flex border-b border-neutral-200">
+      <button data-tab="attendance" class="tab-btn px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-600">Attendance</button>
+      <button data-tab="fees" class="tab-btn px-4 py-2 text-sm font-medium text-neutral-600 hover:text-primary-600">Fees</button>
+      <button data-tab="reports" class="tab-btn px-4 py-2 text-sm font-medium text-neutral-600 hover:text-primary-600">Reports</button>
+    </div>
+
+    <!-- Attendance Tab -->
+   <!-- Attendance Tab -->
+<div id="tab-attendance" class="tab-content mt-4">
+  <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <h2 class="font-semibold text-neutral-900 mb-2">Last 30 days</h2>
+    <span class="text-xs text-neutral-500">Green=Present, Red=Absent, Amber=Late/Half</span>
+    
+    <!-- Timeline -->
+    <div class="overflow-x-auto mt-4">
+      <ul class="flex space-x-4 items-center">
+        {% for rec in attendance_records %}
+        <li class="flex flex-col items-center min-w-[60px]">
+          <span class="w-4 h-4 rounded-full
+            {% if rec.status == 'PRESENT' %}bg-emerald-600
+            {% elif rec.status == 'ABSENT' %}bg-red-600
+            {% else %}bg-amber-600{% endif %} mb-1"></span>
+          <span class="text-[10px] text-neutral-600 text-center">{{ rec.date|date:"d M" }}</span>
+        </li>
+        {% empty %}
+        <li class="text-neutral-500 italic">No attendance records yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Optional detailed list (click to expand) -->
+    <details class="mt-4">
+      <summary class="cursor-pointer text-sm font-medium text-primary-600">View detailed attendance</summary>
+      <ul class="divide-y divide-neutral-100 text-sm mt-2">
+        {% for rec in attendance_records %}
+        <li class="flex justify-between py-2">
+          <span>{{ rec.date|date:"j M Y" }}</span>
+          <span class="{% if rec.status == 'PRESENT' %}text-emerald-600{% elif rec.status == 'ABSENT' %}text-red-600{% else %}text-amber-600{% endif %} font-medium">
+            {{ rec.get_status_display }}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+  </div>
+</div>
+
+
+    <!-- Fees Tab -->
+    <div id="tab-fees" class="tab-content mt-4 hidden">
+      <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4 max-md:p-3">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-neutral-900">Fees & Payments</h2>
+          <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full">
+            <i class="fas fa-shield-alt"></i> Secure payments
+          </span>
+        </div>
+
+        <!-- Summary badges -->
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="inline-flex items-center gap-1 bg-neutral-100 text-neutral-700 px-2.5 py-1 rounded-full">
+            <i class="fas fa-file-invoice-dollar"></i> Total invoices: {{ invoices|dictsort:"status"|length }}
+          </span>
+          <span class="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-full">
+            <i class="fas fa-exclamation-circle"></i> Unpaid: {{ total_balance|intcomma }} Br
+          </span>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button class="filter-btn px-3 py-1.5 text-xs rounded-lg bg-neutral-100 text-neutral-700" data-filter="ALL">Show All</button>
+          <button class="filter-btn px-3 py-1.5 text-xs rounded-lg bg-red-50 text-red-700" data-filter="UNPAID">Unpaid Only</button>
+          <button class="filter-btn px-3 py-1.5 text-xs rounded-lg bg-emerald-50 text-emerald-700" data-filter="PAID">Paid Only</button>
+          <div class="ml-auto flex items-center gap-3">
+            
+          </div>
+        </div>
+
+        <form id="invoice-form">
+          <ul id="invoice-list" class="divide-y divide-neutral-100 text-sm mt-2">
+            {% for inv in invoices %}
+            <li class="invoice-row flex items-center justify-between py-3" data-status="{{ inv.status }}">
+              <div class="flex items-center gap-3">
+                <div>
+                  <div class="font-medium text-neutral-900">
+                    {% if inv.fee %}{{ inv.fee.get_name_display }}{% elif inv.description %}{{ inv.description }}{% else %}Invoice{% endif %}
+                  </div>
+                  <div class="text-xs text-neutral-500">Due: {{ inv.due_date|date:"j M Y" }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-semibold whitespace-nowrap">{{ inv.amount_due|intcomma }} Br</span>
+                <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full
+                  {% if inv.status == 'PAID' %} bg-emerald-50 text-emerald-700
+                  {% elif inv.status == 'OPENING_BALANCE' %} bg-warning-100 text-warning-600
+                  {% elif inv.status == 'PARTIAL' %} bg-amber-50 text-amber-700
+                  {% else %} bg-red-50 text-red-700 {% endif %}">
+                  <i class="fas {% if inv.status == 'PAID' %}fa-check{% elif inv.status == 'PARTIAL' %}fa-hourglass-half{% else %}fa-exclamation{% endif %}"></i>
+                  {% if inv.get_status_display == 'OPENING_BALANCE' %} O.B {%else%}
+                    {{ inv.get_status_display }}
+                    {% endif %}
+                </span>
+                   <a href="{% url 'parents:child_fees_detail' child.id %}"  class="px-3 py-1.5 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-medium">Pay</a>
+              </div>
+            </li>
+            {% empty %}
+            <li class="py-2 text-neutral-500 italic">No invoices yet.</li>
+            {% endfor %}
+          </ul>
+
+         
+        </form>
+      </div>
+    </div>
+
+    <!-- Reports Tab -->
+    <div id="tab-reports" class="tab-content mt-4 hidden">
+      <div class="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-2">
+        <h2 class="font-semibold text-neutral-900">Reports</h2>
+        <p class="text-sm text-neutral-600">Download report cards and documents for {{ child.full_name }}.</p>
+        <ul class="space-y-2 text-sm mt-2">
+          <li><a href="#" class="inline-flex items-center gap-2 text-primary-600 hover:underline"><i class="fas fa-file-pdf"></i> Term 1 Report Card</a></li>
+          <li><a href="#" class="inline-flex items-center gap-2 text-primary-600 hover:underline"><i class="fas fa-file-pdf"></i> Term 2 Report Card</a></li>
+          <li><a href="#" class="inline-flex items-center gap-2 text-primary-600 hover:underline"><i class="fas fa-file-pdf"></i> Attendance Certificate</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="payment-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+    <h3 class="text-lg font-semibold text-neutral-900 mb-4">Confirm payment</h3>
+    <div id="selected-invoices" class="space-y-2 text-sm text-neutral-700 max-h-48 overflow-y-auto"></div>
+    <div class="mt-4 flex justify-between font-semibold text-neutral-900">
+      <span>Total</span>
+      <span id="payment-total">0 Br</span>
+    </div>
+    <div class="mt-6 flex justify-end gap-3">
+      <button id="cancel-payment" class="px-4 py-2 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-50">Cancel</button>
+      <button id="confirm-payment" class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Confirm & Pay</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Tabs
+  const tabs = document.querySelectorAll(".tab-btn");
+  const contents = document.querySelectorAll(".tab-content");
+  function activateTab(tabName) {
+    tabs.forEach(b => b.classList.remove("text-primary-600","border-primary-600","border-b-2"));
+    tabs.forEach(b => b.classList.add("text-neutral-600"));
+    contents.forEach(c => c.classList.add("hidden"));
+
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+    const content = document.getElementById("tab-" + tabName);
+    if(btn && content){
+      btn.classList.add("text-primary-600","border-primary-600","border-b-2");
+      btn.classList.remove("text-neutral-600");
+      content.classList.remove("hidden");
+      localStorage.setItem("childDetailActiveTab", tabName);
+    }
+  }
+  tabs.forEach(btn => btn.addEventListener("click", ()=> activateTab(btn.dataset.tab)));
+  activateTab(localStorage.getItem("childDetailActiveTab") || "attendance");
+
+  // Invoice filters
+  const form = document.getElementById("invoice-form");
+  const rows = document.querySelectorAll(".invoice-row");
+  const filterBtns = document.querySelectorAll(".filter-btn");
+  filterBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const f = btn.dataset.filter;
+      rows.forEach(r => r.style.display = (f==="ALL" || r.dataset.status===f)?"":"none");
+    });
+  });
+ 
+
+  // Payment modal
+  
+});
+</script>
+{% endblock %}

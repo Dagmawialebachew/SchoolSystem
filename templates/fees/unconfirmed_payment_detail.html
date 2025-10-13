@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Verify Payment #{{ payment.id }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto p-6 md:p-10 space-y-8 animate-fadeIn">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-neutral-500">
+    <a href="{% url 'fees:unconfirmed_payments_list' %}" class="hover:text-primary-600 transition-colors">
+      Unconfirmed Payments
+    </a>
+    <span>/</span>
+    <span class="font-medium text-neutral-800">Payment #{{ payment.id }}</span>
+  </div>
+
+  <!-- Main Card -->
+  <div class="rounded-2xl bg-white border border-neutral-200 shadow-sm overflow-hidden group relative">
+
+    <!-- Header -->
+    <div class="p-6 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-primary-50 text-primary-600 font-semibold flex items-center justify-center uppercase">
+          {{ payment.invoice.student.full_name|first }}
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold text-neutral-900">{{ payment.invoice.student.full_name }}</h2>
+          <p class="text-sm text-neutral-600">
+            {{ payment.invoice.fee.name|default:"Invoice" }} • 
+            <span class="font-medium text-neutral-800">#{{ payment.invoice.id }}</span>
+          </p>
+          <p class="text-xs text-neutral-500 mt-1">
+            Received on {{ payment.paid_on|date:"M d, Y H:i" }}
+          </p>
+        </div>
+      </div>
+
+      <div class="text-right space-y-1">
+        <div class="text-3xl font-extrabold text-neutral-900">{{ payment.amount|intcomma }} Br</div>
+        <div class="text-sm text-neutral-500">
+          {{ payment.method }}{% if payment.mobile_provider %} • {{ payment.mobile_provider }}{% endif %}
+        </div>
+        {% if overdue %}
+          <span class="inline-block mt-2 px-2 py-0.5 text-xs bg-red-50 text-red-700 rounded-full font-medium">
+            Overdue
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <hr class="border-neutral-100">
+
+    <!-- Details Grid -->
+    <div class="grid md:grid-cols-2 gap-8 p-6">
+      
+      <!-- Left -->
+      <div>
+        <h3 class="font-semibold text-neutral-800 mb-2">Reference</h3>
+        <p class="text-sm text-neutral-700 bg-neutral-50 px-3 py-2 rounded-md font-mono tracking-tight">
+          {{ payment.reference|default:"—" }}
+        </p>
+
+        {% if payment.receipt_file %}
+        <div class="mt-6">
+          <h3 class="font-semibold text-neutral-800 mb-2">Uploaded Receipt</h3>
+          <div class="rounded-xl border border-neutral-200 overflow-hidden bg-neutral-50">
+            {% if ".pdf" in payment.receipt_file.url|lower %}
+              <a href="{{ payment.receipt_file.url }}" target="_blank"
+                 class="block text-center py-3 text-sm text-primary-600 hover:text-primary-700 hover:underline transition">
+                📄 Open PDF Receipt
+              </a>
+            {% else %}
+              <img src="{{ payment.receipt_file.url }}" alt="receipt" 
+                   class="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.01]">
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Right -->
+      <div>
+        <h3 class="font-semibold text-neutral-800 mb-2">Invoice Snapshot</h3>
+        <p class="text-sm text-neutral-700">{{ payment.invoice.description|default:"No description available." }}</p>
+
+        <div class="mt-4 space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-neutral-500">Amount due</span>
+            <span class="font-medium text-neutral-900">{{ payment.invoice.amount_due|intcomma }} Br</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-neutral-500">Confirmed paid</span>
+            <span class="font-medium text-emerald-600">{{ confirmed_sum|intcomma }} Br</span>
+          </div>
+
+          <!-- Progress bar -->
+          {% with due=payment.invoice.amount_due paid=confirmed_sum %}
+            {% if due > 0 %}
+              {% with percent=paid|divisibleby:due %}
+                {% if percent %}
+                  {% with progress=percent|floatformat:0 %}
+                    <div class="w-full bg-neutral-100 h-2 rounded-full overflow-hidden mt-2">
+                      <div class="h-2 bg-emerald-500 rounded-full transition-all duration-700 ease-out" 
+                           style="width: {{ progress }}%;">
+                      </div>
+                    </div>
+                  {% endwith %}
+                {% endif %}
+              {% endwith %}
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+
+    <hr class="border-neutral-100">
+
+    <!-- Footer -->
+    <div class="p-6 flex justify-end gap-3">
+      <button onclick="openModal('rejectModal')"
+        class="px-4 py-2.5 text-sm font-medium rounded-lg border border-red-100 bg-red-50 text-red-700 hover:bg-red-100 transition">
+        <i class="fa-solid fa-xmark mr-1"></i> Reject
+      </button>
+
+      <button onclick="openModal('confirmModal')"
+        class="px-4 py-2.5 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+        <i class="fa-solid fa-check mr-1"></i> Confirm
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl animate-fadeIn">
+    <h3 class="text-lg font-semibold text-neutral-800 mb-2">Confirm this payment?</h3>
+    <p class="text-sm text-neutral-500 mb-4">
+      Once confirmed, this payment will be recorded and reflected in the student’s invoice.
+    </p>
+    <form method="post" action="{% url 'fees:confirm_unconfirmed_payment' payment.pk %}">
+      {% csrf_token %}
+      <div class="flex justify-center gap-3">
+        <button type="button" onclick="closeModal('confirmModal')" 
+                class="px-4 py-2 text-sm rounded-lg border border-neutral-200 hover:bg-neutral-50 transition">
+          Cancel
+        </button>
+        <button type="submit" 
+                class="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">
+          Confirm
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl animate-fadeIn">
+    <h3 class="text-lg font-semibold text-neutral-800 mb-2">Reject this payment?</h3>
+    <p class="text-sm text-neutral-500 mb-4">This action cannot be undone. The payment will be marked as rejected.</p>
+    <form method="post" action="{% url 'fees:reject_unconfirmed_payment' payment.pk %}">
+      {% csrf_token %}
+      <div class="flex justify-center gap-3">
+        <button type="button" onclick="closeModal('rejectModal')" 
+                class="px-4 py-2 text-sm rounded-lg border border-neutral-200 hover:bg-neutral-50 transition">
+          Cancel
+        </button>
+        <button type="submit" 
+                class="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition">
+          Reject
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('opacity-100'), 10);
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('opacity-100');
+  setTimeout(() => el.classList.add('hidden'), 200);
+}
+</script>
+{% endblock %}

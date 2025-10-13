@@ -3,27 +3,20 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}SchoolSystem{% endblock %}</title>
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
       <script src="{% static 'js/chart.min.js' %}"></script> 
       <script src="{% static 'js/dashboard-charts.js' %}"></script>
-
-
-<link rel="stylesheet" 
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
-      referrerpolicy="no-referrer" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
 </head>
 <body class="h-full bg-neutral-100 font-poppins pt-16">
-    <div class="min-h-full">
+    <div class="min-h-full pb-20">
         {% if user.is_authenticated and user.is_verified %}
             {% include 'partials/navbar.html' %}
             <div class="flex">
                 {% include 'partials/sidebar.html' %}
-                <main class="flex-1 p-6">
+                <main class="flex-1 p-6 max-md:p-4">
                     {% include 'partials/flash.html' %}
                     {% block content %}
                     {% endblock %}
@@ -33,9 +26,51 @@
             <main class="min-h-screen flex items-center justify-center">
                 {% include 'partials/flash.html' %}
                 {% block alt_content %}
+
                 {% endblock %}
             </main>
         {% endif %}
     </div>
 </body>
+<script>
+    if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/static/js/sw.js")
+    .then(() => console.log("Service Worker registered"))
+    .catch(err => console.error("SW registration failed:", err));
+}
+
+</script>
+
+<script>
+  const mobileBtn = document.getElementById("mobile-menu-button");
+
+  const mobileMenu = document.getElementById("mobile-menu");       // Top nav dropdown
+  const sidebar = document.getElementById("sidebar");              // Sidebar
+  const overlay = document.getElementById("sidebar-overlay");      // Sidebar overlay
+
+  mobileBtn.addEventListener("click", () => {
+    // Toggle mobile nav dropdown
+    if (mobileMenu) {
+      mobileMenu.classList.toggle("hidden");
+      mobileMenu.classList.toggle("animate-slideDown");
+    }
+
+    // Toggle sidebar & overlay
+    if (sidebar && overlay) {
+      sidebar.classList.toggle("-translate-x-full");
+      overlay.classList.toggle("hidden");
+      overlay.classList.toggle("opacity-0");
+      overlay.classList.toggle("opacity-100");
+    }
+  });
+
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      sidebar.classList.add("-translate-x-full");
+      overlay.classList.add("hidden");
+      overlay.classList.add("opacity-0");
+    });
+  }
+</script>
+
 </html>
