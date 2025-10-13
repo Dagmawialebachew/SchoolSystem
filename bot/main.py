@@ -1,8 +1,8 @@
+# bots/main.py
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import requests
-
-DJANGO_API_URL = "https://yourdomain.com/parents/api/save_chat_id/"  # use your domain
+from .config import TELEGRAM_BOT_TOKEN, DJANGO_API_URL
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text  # "/start parent_12"
@@ -21,6 +21,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("👋 Hello! Please open the link from your parent profile to connect.")
 
-app = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
+# Build the bot application
+app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
-app.run_polling()
+
+# Run polling (dev mode)
+if __name__ == "__main__":
+    app.run_polling()

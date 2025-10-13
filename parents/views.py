@@ -151,26 +151,38 @@ class ParentDashboardView(RoleRequiredMixin, TemplateView):
         return ctx
 
 class ParentProfileView(LoginRequiredMixin, TemplateView):
+    """
+    Displays the parent's profile, linked children, and Telegram connection status.
+    """
     template_name = "parents/profile.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
+        
+        # Ensure the ParentProfile exists for the logged-in user
         parent_profile = get_object_or_404(ParentProfile, user=user)
+        
+        # --- TELEGRAM DEEP LINK SETUP ---
+        # 1. Define the bot username (without the '@' symbol)
+        bot_username = "dartsolutions_bot" 
+        
+        # 2. Define the unique start parameter (e.g., parent_123)
+        start_param = f"parent_{parent_profile.id}"
+        
         ctx.update({
             "user": user,
             "parent_profile": parent_profile,
+            # Fetch all linked children (assuming a reverse relation named 'children')
             "children": parent_profile.children.all() if hasattr(parent_profile, "children") else [],
+            
+            # Pass Telegram parameters to the template for deep linking
+            "bot_username": bot_username,
+            "start_param": start_param,
         })
-        ctx["telegram_link"] = get_telegram_deep_link(parent_profile)
-    
+        
         return ctx
-
-def get_telegram_deep_link(parent_profile):
-    bot_username = "@dartsolutions_bot"
-    param = f"parent_{parent_profile.id}"  # unique identifier
-    return f"https://t.me/{bot_username}?start={param}"
-
+    
 class EditParentProfileView(LoginRequiredMixin, FormView):
     """
     Handles updating both the core User model fields (name, email) 
