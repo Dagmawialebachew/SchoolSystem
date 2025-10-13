@@ -7,40 +7,40 @@
 <div class="max-w-5xl mx-auto px-4 py-8 sm:px-6 sm:py-12 space-y-10">
 
     <!-- PROFILE HEADER & AVATAR -->
-   <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pb-4 border-b border-gray-200">
-  
-  <!-- Left section: avatar and text -->
-  <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-      
-      <!-- Avatar container fixed height, never stretches -->
-      <div class="flex-shrink-0">
-          <div class="w-24 h-24 rounded-full overflow-hidden shadow-lg ring-4 ring-primary-500/30 flex items-center justify-center bg-gray-100">
-              {% if parent_profile.avatar %}
-                  <img src="{{ parent_profile.avatar.url }}" 
-                       alt="Avatar of {{ user.get_full_name }}" 
-                       class="w-full h-full object-cover">
-              {% else %}
-                  <i class="fas fa-user text-4xl text-primary-600"></i>
-              {% endif %}
-          </div>
-      </div>
+    <section class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pb-4 border-b border-gray-200">
+    
+        <!-- Left section: avatar and text -->
+        <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            
+            <!-- Avatar container fixed height, never stretches -->
+            <div class="flex-shrink-0">
+                <div class="w-24 h-24 rounded-full overflow-hidden shadow-lg ring-4 ring-primary-500/30 flex items-center justify-center bg-gray-100">
+                    {% if parent_profile.avatar %}
+                        <img src="{{ parent_profile.avatar.url }}" 
+                                alt="Avatar of {{ user.get_full_name }}" 
+                                class="w-full h-full object-cover">
+                    {% else %}
+                        <i class="fas fa-user text-4xl text-primary-600"></i>
+                    {% endif %}
+                </div>
+            </div>
 
-      <!-- Text section -->
-      <div class="text-center sm:text-left">
-          <h1 class="text-3xl sm:text-4xl font-black text-neutral-900 leading-tight">{{ user.get_full_name }}</h1>
-          <p class="text-sm font-semibold text-primary-600 mb-1">Parent Account</p>
-          <p class="text-sm text-neutral-600">{{ user.email }}</p>
-          <p class="text-xs text-neutral-400 mt-1">Last seen: {{ user.last_login|date:"M d, Y @ H:i" }}</p>
-      </div>
+            <!-- Text section -->
+            <div class="text-center sm:text-left">
+                <h1 class="text-3xl sm:text-4xl font-black text-neutral-900 leading-tight">{{ user.get_full_name }}</h1>
+                <p class="text-sm font-semibold text-primary-600 mb-1">Parent Account</p>
+                <p class="text-sm text-neutral-600">{{ user.email }}</p>
+                <p class="text-xs text-neutral-400 mt-1">Last seen: {{ user.last_login|date:"M d, Y @ H:i" }}</p>
+            </div>
 
-  </div>
+        </div>
 
-  <!-- Right: Update button -->
-  <a href="{% url 'parents:edit_profile' %}" 
-     class="self-center sm:self-auto px-5 py-2.5 bg-primary-600 text-white text-base font-semibold rounded-xl shadow-lg shadow-primary-500/30 hover:bg-primary-700 transition duration-300 transform hover:scale-[1.02] whitespace-nowrap">
-      <i class="fas fa-user-edit mr-2"></i> Update Profile Info
-  </a>
-</section>
+        <!-- Right: Update button -->
+        <a href="{% url 'parents:edit_profile' %}" 
+            class="self-center sm:self-auto px-5 py-2.5 bg-primary-600 text-white text-base font-semibold rounded-xl shadow-lg shadow-primary-500/30 hover:bg-primary-700 transition duration-300 transform hover:scale-[1.02] whitespace-nowrap">
+            <i class="fas fa-user-edit mr-2"></i> Update Profile Info
+        </a>
+    </section>
 
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -78,14 +78,37 @@
                             <span class="text-red-500 font-semibold flex items-center gap-1">
                                 <i class="fas fa-times-circle"></i> Not Connected
                             </span>
-                            {% if telegram_link %}
-                                <a href="{{ telegram_link }}" target="_blank"
-                                    class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-semibold transition">
-                                    <i class="fab fa-telegram-plane mr-1"></i> Connect Now
-                                </a>
-                            {% endif %}
+                           <!-- Connect to Telegram button - Uses context variables -->
+                            <div class="relative flex items-center gap-2">
+                                <button id="connect-telegram-btn"
+                                        type="button"
+                                        class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-semibold transition flex items-center"
+                                        data-bot="{{ bot_username }}" 
+                                        data-param="{{ start_param }}"
+                                        aria-live="polite">
+                                    <i class="fab fa-telegram-plane mr-1"></i>
+                                    Connect Now
+                                </button>
+
+                                <!-- hidden fallback link (https) for copy / manual open -->
+                                <a id="telegram-https-link" 
+                                    href="https://t.me/{{ bot_username }}?start={{ start_param }}"
+                                    class="sr-only" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer">Open Telegram</a>
+                            </div>
+
+                            <!-- small unobtrusive helper text shown on failure -->
+                            
+
+
                         {% endif %}
                     </dd>
+                    <div id="tg-helper" class="mt-2 block text-xs text-neutral-500 hidden">
+                                <span>If Telegram didn't open, </span>
+                                <button id="copy-tg-link" type="button" class="underline text-primary-600 hover:text-primary-700">copy link</button>
+                                <span> and paste it into Telegram.</span>
+                            </div>
                 </div>
             </dl>
         </section>
@@ -157,4 +180,67 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const btn = document.getElementById('connect-telegram-btn');
+    const helper = document.getElementById('tg-helper');
+    const httpsLink = document.getElementById('telegram-https-link');
+    const copyBtn = document.getElementById('copy-tg-link');
+
+    if (!btn || !copyBtn) return;
+
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        const bot = btn.dataset.bot?.replace(/^@/, '') || 'YourSchoolBot';
+        const param = btn.dataset.param || 'test_start';
+        
+        // Telegram Deep Link URL (tg://)
+        const tgScheme = `tg://resolve?domain=${bot}&start=${encodeURIComponent(param)}`;
+        
+        // HTTPS fallback URL (opens in a new tab)
+        const httpsUrl = `https://t.me/${bot}?start=${encodeURIComponent(param)}`;
+
+        // Try to open Telegram app
+        window.location.href = tgScheme;
+
+        // Fallback after 1 second → open in new tab instead of current
+        setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+                window.open(httpsUrl, '_blank', 'noopener,noreferrer');
+            }
+        }, 1000); 
+
+        // Show helper text after 3 seconds
+        setTimeout(() => {
+            helper.classList.remove('hidden');
+        }, 3000);
+    });
+
+    // Copy Link
+    copyBtn.addEventListener('click', () => {
+        const httpsUrl = httpsLink.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(httpsUrl).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.remove('text-primary-600');
+                copyBtn.classList.add('text-emerald-600'); 
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('text-emerald-600');
+                    copyBtn.classList.add('text-primary-600'); 
+                }, 1500);
+            }).catch(() => {
+                window.prompt("Copy this link manually:", httpsUrl);
+            });
+        } else {
+            window.prompt("Copy this link manually:", httpsUrl);
+        }
+    });
+
+})();
+</script>
+
 {% endblock %}
