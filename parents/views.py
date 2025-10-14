@@ -780,30 +780,59 @@ class ProviderRedirectView(View):
 #Running the bot automatically
 
 # parents/views.py
+# parents/views.py (or wherever you place your Django views)
+
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from telegram import Update
-from telegram.ext import ApplicationBuilder
-from asgiref.sync import async_to_sync
 import json
-from bot.config import TELEGRAM_BOT_TOKEN
+# Import the necessary components from your main bot file
+from bot.main import app, run_async 
+# Note: You only need to import the 'app' instance and 'run_async' helper.
+
+# Initialize the bot app once when Django starts up
+# This is crucial for performance and resource management.
+try:
+    # Use the synchronous wrapper since this runs at Django startup (sync context)
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(app.initialize())
+    # You might want to remove the above if Django's default startup context causes issues
+    # and rely on the handlers being attached, which is often enough. 
+    # Let's remove the explicit initialize() call as PTB often handles this during the first process_update.
+    # The handlers are already attached in bot/main.py
+except Exception as e:
+    # Handle case where event loop is closed (e.g., during testing/reload)
+    print(f"Initial app build error (usually harmless): {e}")
+
 
 @csrf_exempt
 def telegram_webhook(request):
+    """
+    Handles incoming HTTP POST requests from the Telegram Webhook.
+    """
     if request.method != 'POST':
-        return JsonResponse({"ok": False, "message": "Method not allowed"}, status=405)
+        # Telegram will only send POST requests
+        return HttpResponse('Method Not Allowed', status=405)
 
+    # Telegram expects a 200 OK response quickly, even if processing fails.
+    # We must ensure we return HttpResponse('ok', 200) quickly.
     try:
         data = json.loads(request.body.decode('utf-8'))
-
-        # Build and initialize the bot
-        app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-        async_to_sync(app.initialize)()
-
+        
+        # 1. Convert the raw JSON data into a python-telegram-bot Update object
         update = Update.de_json(data, app.bot)
-        async_to_sync(app.process_update)(update)
+        
+        # 2. Use your run_async helper to process the async update within the sync view
+        # This will execute the 'start' handler in your bot/main.py
+        run_async(update)
 
-        return JsonResponse({"ok": True})
+        # Success - Telegram expects a simple 'ok' response
+        return HttpResponse('ok', status=200)
+
+    except json.JSONDecodeError:
+        return HttpResponse('Invalid JSON payload', status=400)
     except Exception as e:
-        print("❌ Webhook error:", e)
-        return JsonResponse({"ok": False, "error": str(e)}, status=400)
+        # Log the error but still return 200 OK so Telegram doesn't retry endlessly
+        print(f"❌ Webhook processing error: {e}")
+        return HttpResponse('ok', status=200) # Still return 200 for Telegram
