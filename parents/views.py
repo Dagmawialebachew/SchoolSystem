@@ -6,6 +6,8 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.views import View
+
+from bot.main import run_async
 from .forms import CombinedParentProfileForm
 from django.views.generic import TemplateView, DetailView, ListView, UpdateView, FormView
 from django.shortcuts import get_object_or_404, redirect
@@ -779,15 +781,12 @@ class ProviderRedirectView(View):
 
 #Running the bot automatically
 
-# parents/views.py
-# parents/views.py (or wherever you place your Django views)
-
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
 from telegram import Update
 import json
-# Import the necessary components from your main bot file
-# parents/views.py
+from bot.main import app, run_async
+
 
 from telegram.ext import Application # We might need this for the type hint
 
