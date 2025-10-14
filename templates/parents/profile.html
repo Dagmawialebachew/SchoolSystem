@@ -70,10 +70,25 @@
                             <span class="text-emerald-600 font-bold flex items-center gap-1">
                                 <i class="fas fa-check-circle"></i> Connected
                             </span>
-                            <a href="{% url 'parents:disconnect_telegram' %}" 
-                                class="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs transition">
-                                Disconnect
-                            </a>
+                   <div class="relative flex items-center gap-2">
+        <button id="disconnect-telegram-btn"
+                type="button"
+                class="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs transition font-semibold flex items-center"
+                data-bot="{{ bot_username }}" 
+                data-param="disconnect_parent_{{ parent_profile.pk }}"
+                aria-live="polite">
+            <i class="fab fa-telegram-plane mr-1"></i>
+            Disconnect
+        </button>
+
+        <a id="telegram-https-disconnect-link" 
+            href="https://t.me/{{ bot_username }}?start=disconnect_parent_{{ parent_profile.pk }}"
+            class="sr-only" 
+            target="_blank" 
+            rel="noopener noreferrer">Open Telegram Disconnect</a>
+    </div>
+
+
                         {% else %}
                             <span class="text-red-500 font-semibold flex items-center gap-1">
                                 <i class="fas fa-times-circle"></i> Not Connected
@@ -238,6 +253,45 @@
         } else {
             window.prompt("Copy this link manually:", httpsUrl);
         }
+    });
+
+})();
+
+
+(function() {
+    const disconnectBtn = document.getElementById('disconnect-telegram-btn');
+    const httpsDisconnectLink = document.getElementById('telegram-https-disconnect-link');
+
+    if (!disconnectBtn || !httpsDisconnectLink) return;
+
+    disconnectBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // This is the full parameter: "disconnect_parent_12"
+        const fullParam = disconnectBtn.dataset.param; 
+        const bot = disconnectBtn.dataset.bot?.replace(/^@/, '') || 'dartsolutions_bot';
+        
+        // Telegram Deep Link URL (tg://) for /disconnect command
+        // Note: Telegram treats the whole string after `?start=` as the start parameter.
+        // The bot receives the message: "/start disconnect_parent_12".
+        // The bot's logic in bot/main.py needs to handle this structure
+        // as if the user typed: "/disconnect parent_12"
+        const tgScheme = `tg://resolve?domain=${bot}&start=${encodeURIComponent(fullParam)}`;
+        
+        // HTTPS fallback URL
+        const httpsUrl = httpsDisconnectLink.href;
+
+        // 1. Try to open Telegram app with the deep link
+        window.location.href = tgScheme;
+
+        // 2. Fallback after 1 second → open HTTPS link in a new tab
+        setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+                window.open(httpsUrl, '_blank', 'noopener,noreferrer');
+            }
+        }, 1000); 
+
+     
     });
 
 })();
