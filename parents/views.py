@@ -787,52 +787,32 @@ from django.http import JsonResponse, HttpResponse
 from telegram import Update
 import json
 # Import the necessary components from your main bot file
+# parents/views.py
+
+# ... (imports) ...
 from bot.main import app, run_async 
-# Note: You only need to import the 'app' instance and 'run_async' helper.
-
-# Initialize the bot app once when Django starts up
-# This is crucial for performance and resource management.
-try:
-    # Use the synchronous wrapper since this runs at Django startup (sync context)
-    import asyncio
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(app.initialize())
-    # You might want to remove the above if Django's default startup context causes issues
-    # and rely on the handlers being attached, which is often enough. 
-    # Let's remove the explicit initialize() call as PTB often handles this during the first process_update.
-    # The handlers are already attached in bot/main.py
-except Exception as e:
-    # Handle case where event loop is closed (e.g., during testing/reload)
-    print(f"Initial app build error (usually harmless): {e}")
-
 
 @csrf_exempt
 def telegram_webhook(request):
-    """
-    Handles incoming HTTP POST requests from the Telegram Webhook.
-    """
+    # CRITICAL: Always return 200 OK first.
     if request.method != 'POST':
-        # Telegram will only send POST requests
         return HttpResponse('Method Not Allowed', status=405)
 
-    # Telegram expects a 200 OK response quickly, even if processing fails.
-    # We must ensure we return HttpResponse('ok', 200) quickly.
     try:
         data = json.loads(request.body.decode('utf-8'))
         
-        # 1. Convert the raw JSON data into a python-telegram-bot Update object
+        # 1. Convert to Update object
         update = Update.de_json(data, app.bot)
         
-        # 2. Use your run_async helper to process the async update within the sync view
-        # This will execute the 'start' handler in your bot/main.py
+        # 2. Process the update synchronously using your helper.
+        #    If this raises an exception or times out, the HttpResponse is still sent.
         run_async(update)
 
-        # Success - Telegram expects a simple 'ok' response
-        return HttpResponse('ok', status=200)
-
-    except json.JSONDecodeError:
-        return HttpResponse('Invalid JSON payload', status=400)
     except Exception as e:
-        # Log the error but still return 200 OK so Telegram doesn't retry endlessly
+        # Log the error (crucial for debugging)
         print(f"❌ Webhook processing error: {e}")
-        return HttpResponse('ok', status=200) # Still return 200 for Telegram
+        # Note: We still return 200 OK to Telegram, regardless of internal error
+        # This prevents Telegram from pausing updates.
+
+    # 3. Always return 200 OK to Telegram immediately.
+    return HttpResponse('ok', status=200)
