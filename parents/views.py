@@ -781,20 +781,30 @@ class ProviderRedirectView(View):
 
 # parents/views.py
 from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
+from django.http import JsonResponse
 from telegram import Update
-from bot.main import app, run_async
+from telegram.ext import ApplicationBuilder
+from asgiref.sync import async_to_sync
 import json
+from bot.config import TELEGRAM_BOT_TOKEN
 
 @csrf_exempt
 def telegram_webhook(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            update = Update.de_json(data, app.bot)
-            run_async(update)
-            return HttpResponse('ok', status=200)
-        except Exception as e:
-            print("Webhook error:", e)
-            return HttpResponse('error', status=400)
-    return HttpResponse('method not allowed', status=405)
+    if request.method != 'POST':
+        return JsonResponse({"ok": False, "message": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+
+        # Build and initialize the bot
+        app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+        async_to_sync(app.initialize)()  # ✅ This is the missing step
+
+        update = Update.de_json(data, app.bot)
+        async_to_sync(app.process_update)(update)
+
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        print("❌ Webhook error:", e)
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
+
