@@ -798,7 +798,7 @@ def telegram_webhook(request):
 
         # Build and initialize the bot
         app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-        async_to_sync(app.initialize)()  # ✅ This is the missing step
+        async_to_sync(app.initialize)()
 
         update = Update.de_json(data, app.bot)
         async_to_sync(app.process_update)(update)
@@ -807,4 +807,3 @@ def telegram_webhook(request):
     except Exception as e:
         print("❌ Webhook error:", e)
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
-
