@@ -775,3 +775,26 @@ class ProviderRedirectView(View):
         return redirect(provider_checkout)
 
 
+
+
+#Running the bot automatically
+
+# parents/views.py
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+from telegram import Update
+from bot.main import app, run_async
+import json
+
+@csrf_exempt
+def telegram_webhook(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            update = Update.de_json(data, app.bot)
+            run_async(update)
+            return HttpResponse('ok', status=200)
+        except Exception as e:
+            print("Webhook error:", e)
+            return HttpResponse('error', status=400)
+    return HttpResponse('method not allowed', status=405)

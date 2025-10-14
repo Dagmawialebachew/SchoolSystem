@@ -29,5 +29,6 @@ urlpatterns = [
     path("profile/edit/", EditParentProfileView.as_view(), name="edit_profile"),
     path("api/save_chat_id/", api.save_chat_id, name="save_chat_id"),
     path("api/disconnect_chat_id/", api.disconnect_chat_id, name="disconnect_chat_id"),
+path('telegram-webhook/', views.telegram_webhook, name='telegram_webhook'),
 
 ]
