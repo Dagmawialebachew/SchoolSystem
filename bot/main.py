@@ -64,7 +64,7 @@ import asyncio
 async def setup_webhook():
     """Sets Telegram webhook to your PythonAnywhere domain"""
     DOMAIN = "schoolsys.pythonanywhere.com"  # ✅ your actual domain
-    WEBHOOK_PATH = "/telegram-webhook/"      # must match Django URL
+    WEBHOOK_PATH = "parents/telegram-webhook/"      # must match Django URL
     WEBHOOK_URL = f"https://{DOMAIN}{WEBHOOK_PATH}"
 
     bot = app.bot
