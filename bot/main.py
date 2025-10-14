@@ -59,15 +59,17 @@ def run_async(update):
 
 
 # --- Webhook setup function (run once in console) ---
-def setup_webhook():
+import asyncio
+
+async def setup_webhook():
     """Sets Telegram webhook to your PythonAnywhere domain"""
-    DOMAIN = "schoolsys.pythonanywhere.com"  # 🔁 CHANGE THIS
-    WEBHOOK_PATH = "/telegram-webhook/"          # must match your Django URL
+    DOMAIN = "schoolsys.pythonanywhere.com"  # ✅ your actual domain
+    WEBHOOK_PATH = "/telegram-webhook/"      # must match Django URL
     WEBHOOK_URL = f"https://{DOMAIN}{WEBHOOK_PATH}"
 
     bot = app.bot
-    bot.delete_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
+    await bot.delete_webhook()
+    await bot.set_webhook(url=WEBHOOK_URL)
     print(f"✅ Webhook set successfully to: {WEBHOOK_URL}")
 
 
