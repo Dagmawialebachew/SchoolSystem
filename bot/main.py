@@ -5,6 +5,8 @@ import requests
 import json
 import asyncio
 from bot.config import DJANGO_API_URL_DISCONNECT, TELEGRAM_BOT_TOKEN, DJANGO_API_URL_CONNECT
+import threading
+import time
 
 # --- Telegram Bot Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -68,7 +70,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 
-
+def process_update_sync(update_data):
+    """Processes a single Telegram update in a synchronous thread."""
+    
+    # Recreate the application object's Update model from the raw data
+    # (Using app.bot here is safe since it's global)
+    update = Update.de_json(update_data, app.bot)
+    
+    # Run the main async processing function synchronously
+    # The run_async helper in your code does exactly this, but let's 
+    # use the most direct approach for clarity in a new thread.
+    
+    # This is equivalent to your run_async(update) logic
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(app.process_update(update))
+        loop.close()
+    except Exception as e:
+        # Log the error, but let the thread die quietly
+        print(f"THREAD ERROR during process_update: {e}")
+        
 # --- Helper function for Django webhook ---
 def run_async(update):
     """Run Telegram async updates inside Django's synchronous environment."""

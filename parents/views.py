@@ -790,40 +790,29 @@ from bot.main import app, run_async
 
 from telegram.ext import Application # We might need this for the type hint
 
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+import json
+import threading
+from bot.main import process_update_sync # Import the new function
+
 @csrf_exempt
 def telegram_webhook(request):
-    # 1. Immediately send 200 OK (in theory, uWSGI handles this, but defensive coding is best)
     if request.method != 'POST':
         return HttpResponse('Method Not Allowed', status=405)
-
+    
     try:
-        data = json.loads(request.body.decode('utf-8'))
+        # 1. Capture the raw update data
+        update_data = json.loads(request.body.decode('utf-8'))
         
-        # --- THE FIX ---
-        # 1. Check if the app is initialized. This is the source of the error.
-        # We need a synchronous way to ensure the initialization state is correct.
-        
-        # A simple flag often fails due to uWSGI's multiple processes.
-        # The best way is to use a structure that runs the initialization synchronously 
-        # and safely when needed.
-        
-        # Since you have the helper function:
-        # We MUST ensure initialization happens BEFORE the update is processed.
-        
-        # NOTE: Your 'run_async' should be modified to include a safe initialization 
-        # check if it's not being done globally.
+        # 2. Start a new thread to handle the slow API call and reply
+        thread = threading.Thread(target=process_update_sync, args=(update_data,))
+        thread.start()
 
-        # TEMPORARY FIX: Call initialize inside the view using async_to_sync
-        # This is inefficient, but will confirm the fix works.
-        from asgiref.sync import async_to_sync
-        async_to_sync(app.initialize)() 
-        
-        # 2. Process the update
-        update = Update.de_json(data, app.bot)
-        run_async(update)
+        # 3. CRITICAL: IMMEDIATELY return 200 OK to Telegram!
+        return HttpResponse('ok', status=200) 
 
     except Exception as e:
-        print(f"❌ Webhook processing error: {e}")
-        # Telegram expects 200 to prevent retries
-        
-    return HttpResponse('ok', status=200) # Always return 200 OK
+        # If the JSON parsing fails, we still return 200 to prevent retry storms
+        print(f"❌ Webhook parsing/threading error: {e}")
+        return HttpResponse('ok', status=200)
