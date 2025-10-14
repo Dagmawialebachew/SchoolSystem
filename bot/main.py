@@ -12,17 +12,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text  # E.g., "/start parent_12" OR "/start disconnect_parent_12"
     
     if len(message_text.split()) > 1:
-        param = message_text.split()[1]  # E.g., "parent_12" OR "disconnect_parent_12"
+        param = message_text.split()[1]
         
         # --- DISCONNECT LOGIC ---
         if param.startswith("disconnect_parent_"):
             parent_id = param.replace("disconnect_parent_", "")
+            
+            print(f"BOT: Attempting DISCONNECT API call for parent_id={parent_id}")
             response = requests.post(DJANGO_API_URL_DISCONNECT, json={"parent_id": parent_id})
 
-            if response.status_code == 200 and response.json().get("success"):
+            # --- CRITICAL LOGGING ---
+            print(f"BOT: DISCONNECT API Response Status: {response.status_code}")
+            try:
+                response_json = response.json()
+                print(f"BOT: DISCONNECT API Response JSON: {response_json}")
+            except requests.exceptions.JSONDecodeError:
+                print(f"BOT: DISCONNECT API Response Text: {response.text}")
+                response_json = {"success": False} # Default if response is not valid JSON
+
+            if response.status_code == 200 and response_json.get("success"):
                 await update.message.reply_text("❌ Your Telegram has been disconnected from your school account.")
             else:
-                await update.message.reply_text("⚠️ Failed to disconnect. Please try again from your profile page.")
+                await update.message.reply_text("⚠️ Failed to disconnect. Check server logs for API error details.")
             return
         
         # --- CONNECT LOGIC ---
@@ -30,19 +41,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parent_id = param.replace("parent_", "")
             chat_id = update.effective_chat.id
 
-            requests.post(DJANGO_API_URL_CONNECT, json={
+            print(f"BOT: Attempting CONNECT API call for parent_id={parent_id}")
+            response = requests.post(DJANGO_API_URL_CONNECT, json={
                 "parent_id": parent_id,
                 "chat_id": chat_id
             })
 
-            await update.message.reply_text(
-                "✅ Your Telegram is now connected to your school account! "
-                "Please refresh your browser page to see the updated status."
-            )
-            return
-        
-    await update.message.reply_text("👋 Hello! Please open the link from your parent profile to connect or disconnect.")
+            # --- CRITICAL LOGGING ---
+            print(f"BOT: CONNECT API Response Status: {response.status_code}")
+            try:
+                response_json = response.json()
+                print(f"BOT: CONNECT API Response JSON: {response_json}")
+            except requests.exceptions.JSONDecodeError:
+                print(f"BOT: CONNECT API Response Text: {response.text}")
+                response_json = {"success": False}
 
+            if response.status_code == 200 and response_json.get("success"):
+                await update.message.reply_text("✅ Your Telegram is now connected to your school account! Please refresh your browser page to see the updated status.")
+            else:
+                await update.message.reply_text("⚠️ Failed to connect. Check server logs for API error details.")
+            return
+            
+    await update.message.reply_text("👋 Hello! Please open the link from your parent profile to connect or disconnect.")
 
 # --- Build the bot application ---
 app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
