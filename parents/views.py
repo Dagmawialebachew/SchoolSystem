@@ -789,30 +789,42 @@ import json
 # Import the necessary components from your main bot file
 # parents/views.py
 
-# ... (imports) ...
-from bot.main import app, run_async 
+from telegram.ext import Application # We might need this for the type hint
 
 @csrf_exempt
 def telegram_webhook(request):
-    # CRITICAL: Always return 200 OK first.
+    # 1. Immediately send 200 OK (in theory, uWSGI handles this, but defensive coding is best)
     if request.method != 'POST':
         return HttpResponse('Method Not Allowed', status=405)
 
     try:
         data = json.loads(request.body.decode('utf-8'))
         
-        # 1. Convert to Update object
-        update = Update.de_json(data, app.bot)
+        # --- THE FIX ---
+        # 1. Check if the app is initialized. This is the source of the error.
+        # We need a synchronous way to ensure the initialization state is correct.
         
-        # 2. Process the update synchronously using your helper.
-        #    If this raises an exception or times out, the HttpResponse is still sent.
+        # A simple flag often fails due to uWSGI's multiple processes.
+        # The best way is to use a structure that runs the initialization synchronously 
+        # and safely when needed.
+        
+        # Since you have the helper function:
+        # We MUST ensure initialization happens BEFORE the update is processed.
+        
+        # NOTE: Your 'run_async' should be modified to include a safe initialization 
+        # check if it's not being done globally.
+
+        # TEMPORARY FIX: Call initialize inside the view using async_to_sync
+        # This is inefficient, but will confirm the fix works.
+        from asgiref.sync import async_to_sync
+        async_to_sync(app.initialize)() 
+        
+        # 2. Process the update
+        update = Update.de_json(data, app.bot)
         run_async(update)
 
     except Exception as e:
-        # Log the error (crucial for debugging)
         print(f"❌ Webhook processing error: {e}")
-        # Note: We still return 200 OK to Telegram, regardless of internal error
-        # This prevents Telegram from pausing updates.
-
-    # 3. Always return 200 OK to Telegram immediately.
-    return HttpResponse('ok', status=200)
+        # Telegram expects 200 to prevent retries
+        
+    return HttpResponse('ok', status=200) # Always return 200 OK
