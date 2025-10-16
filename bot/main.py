@@ -1,7 +1,7 @@
 import threading
 from asgiref.sync import async_to_sync, sync_to_async 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, MenuButton, WebAppInfo 
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, MenuButton, WebAppInfo
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler, Application
 from telegram.constants import ParseMode, ChatAction
 import asyncio
 import aiohttp
@@ -414,11 +414,15 @@ async def handle_view_invoices(update: Update, context: ContextTypes.DEFAULT_TYP
 # ----------------------
 # Application Setup
 # ----------------------
-app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+builder = Application.builder().token(TELEGRAM_BOT_TOKEN)
+app = builder.build() # Build the application instance here for setup and menu
+
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("fees", fees)) 
 app.add_handler(CallbackQueryHandler(handle_view_invoices, pattern=r"^view_invoices_(\d+)$")) 
 app.add_handler(CallbackQueryHandler(handle_back_to_fees, pattern=r"^back_to_student_(\d+)$"))
+# ... (rest of command and help handlers)
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
     "👋 Welcome\\!\n\n"
@@ -461,11 +465,11 @@ def process_update_sync(update_data):
     Handles incoming Telegram updates from the webhook.
     Runs the async PTB handler inside a dedicated loop per thread.
     
-    CRITICAL FIX: Explicitly setting up Django here to prevent
-    AppRegistryNotReady errors when this function runs in a background thread.
+    CRITICAL FIX: Uses Application.initialize() to prepare the app object
+    for processing updates within the new thread context.
     """
     try:
-        # CRITICAL FIX for crashes in background thread
+        # CRITICAL FIX for crashes in background thread (Django setup)
         if not django.apps.apps.ready:
              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
              django.setup()
@@ -473,15 +477,23 @@ def process_update_sync(update_data):
         # Convert JSON to Telegram Update object
         update = Update.de_json(update_data, app.bot)
         
+        # --- NEW CRITICAL FIX ---
+        # Initialize the application instance for this thread before processing
+        if not app.running:
+            app.initialize() 
+            
         # Each thread gets its own event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        # Run the asynchronous processing task
         loop.run_until_complete(app.process_update(update))
+        
+        # Clean up the loop
         loop.close()
 
     except Exception as e:
         logger.error(f"❌ Error in webhook thread: {e}")
-
 
 # ----------------------
 # Webhook setup function (Correct for PythonAnywhere)
