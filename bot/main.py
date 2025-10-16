@@ -453,6 +453,8 @@ async def handle_back_to_fees(update: Update, context: ContextTypes.DEFAULT_TYPE
 builder = Application.builder().token(TELEGRAM_BOT_TOKEN)
 app = builder.build() 
 
+asyncio.run(app.initialize())
+
 # Add Handlers
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("fees", fees)) 
