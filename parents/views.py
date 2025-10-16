@@ -793,31 +793,16 @@ logger = logging.getLogger(__name__)  # <-- CRITICAL: Define logger here
 
 @csrf_exempt
 def telegram_webhook(request):
-    """
-    Receives Telegram webhook updates (POST request) and immediately offloads processing.
-    Returns 200 OK instantly to Telegram to avoid retries.
-    """
-    if request.method != 'POST':
-        logger.warning(f"Received non-POST request: {request.method}")
-        return HttpResponse('Method Not Allowed', status=405)
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            process_update_sync(data)
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+    # GET or other methods
+    return JsonResponse({"error": "Method not allowed"}, status=405)
 
-    try:
-        # Decode incoming JSON update
-        update_data = json.loads(request.body.decode('utf-8'))
-
-        # Offload processing to a separate thread to avoid blocking
-        threading.Thread(target=process_update_sync, args=(update_data,), daemon=True).start()
-
-        logger.info("✅ Webhook received and offloaded successfully.")
-        return HttpResponse('ok', status=200)
-
-    except json.JSONDecodeError:
-        logger.error("⚠️ Received invalid JSON in webhook request.")
-        return HttpResponse('Invalid JSON', status=400)
-
-    except Exception as e:
-        logger.exception(f"❌ Failed to offload webhook processing: {e}")
-        return HttpResponse('ok (error before offloading)', status=200)
 from django.http import JsonResponse
 from django.views import View
 from fees.models import Invoice

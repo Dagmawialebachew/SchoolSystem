@@ -190,7 +190,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # --- DISCONNECT LOGIC ---
         if param.startswith("disconnect_parent_"):
             parent_id = param.replace("disconnect_parent_", "")
-            await handle_disconnect(update, parent_id)
+            context.application.create_task(handle_disconnect(update, parent_id))
+
             # CRITICAL: Update local persistence AFTER successful API call
             await _delete_parent_id_from_persistence(chat_id)
             return
