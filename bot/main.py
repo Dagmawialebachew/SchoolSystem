@@ -10,13 +10,23 @@ import re
 
 import os
 import django
+from django.apps import apps # CRITICAL: Import 'apps' to check registry status
 
 # Point to your Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
+# This ensures os.environ is set for django.setup()
+if not os.getenv("DJANGO_SETTINGS_MODULE"):
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
 
-# CRITICAL FIX: Removed top-level django.setup().
-# The setup is now explicitly called within the thread function (process_update_sync) 
-# to ensure thread safety, or relied upon from the main uWSGI process.
+# --- CRITICAL FIX: Ensure Django is set up before any model imports ---
+# This prevents the AppRegistryNotReady error when bot.main is imported or run directly.
+if not apps.ready:
+    try:
+        # Calls django.setup() to load the app registry and models
+        django.setup()
+        print("DEBUG: Django environment successfully set up during module import.")
+    except Exception as e:
+        # Should not happen in a clean setup, but included for robustness
+        print(f"Warning: Initial Django setup failed during module import: {e}. Relying on later thread setup.")
 
 # IMPORTANT: These imports must be configured in your bot/config.py
 from bot.config import (
@@ -27,7 +37,7 @@ from bot.config import (
     WEB_APP_BASE_URL # Must be set to 'http://schoolsys.pythonanywhere.com'
 )
 
-# CRITICAL FIX: Ensure this import is uncommented and the model is accessible
+# CRITICAL FIX: The model import is now safe, as it runs after django.setup() above.
 from parents.models import ParentProfile
 
 # ----------------------
