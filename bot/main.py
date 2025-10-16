@@ -498,30 +498,30 @@ async def setup_webhook():
 
 
 
-import asyncio
-def start_background_bot():
-    """
-    Starts the PTB Application in a background async loop (for webhook mode).
-    This ensures initialize() and start() are called exactly once.
-    """
-    async def runner():
-        try:
-            await app.initialize()
-            await app.start()
-            logger.info("🚀 Telegram bot background task started.")
-        except Exception as e:
-            logger.error(f"❌ Failed to start background bot: {e}")
+# import asyncio
+# def start_background_bot():
+#     """
+#     Starts the PTB Application in a background async loop (for webhook mode).
+#     This ensures initialize() and start() are called exactly once.
+#     """
+#     async def runner():
+#         try:
+#             await app.initialize()
+#             await app.start()
+#             logger.info("🚀 Telegram bot background task started.")
+#         except Exception as e:
+#             logger.error(f"❌ Failed to start background bot: {e}")
 
-    # Create a dedicated loop for background tasks
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.create_task(runner())
+#     # Create a dedicated loop for background tasks
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     loop.create_task(runner())
 
 # Run background listener when imported by Django (not in polling mode)
-if os.environ.get("PYTHONANYWHERE_DOMAIN"):
-    start_background_bot()
+# if os.environ.get("PYTHONANYWHERE_DOMAIN"):
+#     start_background_bot()
     
-# ----------------------
+# # ----------------------
 # Local polling (Unchanged for local testing)
 # ----------------------
 if __name__ == "__main__":
