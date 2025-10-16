@@ -1,3 +1,4 @@
+import threading
 from asgiref.sync import async_to_sync, sync_to_async 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, MenuButton, WebAppInfo # ADDED MenuButtonWebApp, MenuButton, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
@@ -498,30 +499,49 @@ async def setup_webhook():
 
 
 
-# import asyncio
-# def start_background_bot():
-#     """
-#     Starts the PTB Application in a background async loop (for webhook mode).
-#     This ensures initialize() and start() are called exactly once.
-#     """
-#     async def runner():
-#         try:
-#             await app.initialize()
-#             await app.start()
-#             logger.info("🚀 Telegram bot background task started.")
-#         except Exception as e:
-#             logger.error(f"❌ Failed to start background bot: {e}")
+import asyncio
+def start_background_bot():
+    """
+    Start the PTB bot in a separate daemon thread on PythonAnywhere.
+    Ensures initialize() and start() are called exactly once.
+    """
+    def run():
+        try:
+            asyncio.run(run_bot_async())
+        except Exception as e:
+            logger.error(f"❌ Background bot thread failed: {e}")
 
-#     # Create a dedicated loop for background tasks
-#     loop = asyncio.new_event_loop()
-#     asyncio.set_event_loop(loop)
-#     loop.create_task(runner())
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    logger.info("🟢 Background bot thread started.")
 
-# Run background listener when imported by Django (not in polling mode)
-# if os.environ.get("PYTHONANYWHERE_DOMAIN"):
-#     start_background_bot()
-    
-# # ----------------------
+async def run_bot_async():
+    """
+    Async runner for the bot: initialize, start, set webhook and menu button.
+    """
+    try:
+        # Initialize the bot once
+        await app.initialize()
+
+        # Only set webhook/menu button if on PythonAnywhere
+        if os.environ.get("PYTHONANYWHERE_DOMAIN"):
+            await setup_webhook()
+        
+        # Start the bot (listens for updates)
+        await app.start()
+        logger.info("🚀 Telegram bot fully started and listening for updates.")
+
+    except Exception as e:
+        logger.error(f"❌ Failed during bot async startup: {e}")
+
+# ----------------------
+# Only start background bot when running on PythonAnywhere
+# ----------------------
+if os.environ.get("PYTHONANYWHERE_DOMAIN"):
+    start_background_bot()
+
+
+# ----------------------
 # Local polling (Unchanged for local testing)
 # ----------------------
 if __name__ == "__main__":
