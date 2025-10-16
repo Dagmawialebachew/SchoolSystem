@@ -790,19 +790,17 @@ from django.http import HttpResponse
 from bot.main import process_update_sync # Import the function
 
 logger = logging.getLogger(__name__)  # <-- CRITICAL: Define logger here
-
 @csrf_exempt
 def telegram_webhook(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            process_update_sync(data)
-            return JsonResponse({"ok": True})
-        except Exception as e:
-            return JsonResponse({"ok": False, "error": str(e)}, status=500)
-    # GET or other methods
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
+    try:
+        update_data = json.loads(request.body)
+        process_update_sync(update_data)
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 from django.http import JsonResponse
 from django.views import View
 from fees.models import Invoice

@@ -172,39 +172,33 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
 # 5. Telegram Bot Handlers
 # ----------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles /start command, including connection and disconnection links."""
     if not update.message:
-        logger.warning("No update.message in /start")
         return
-        
-    logger.info("Bot received /start")
-    logger.info(f"Received /start: {update.message.text} from chat_id {update.effective_chat.id}")
 
-    message_text = update.message.text
     chat_id = update.effective_chat.id
-    
-    # Check if there is a parameter (e.g., /start parent_XYZ)
+    message_text = update.message.text or ""
+
+    # Check for parameters
     if len(message_text.split()) > 1:
         param = message_text.split()[1]
 
-        # --- DISCONNECT LOGIC ---
+        # --- Disconnect ---
         if param.startswith("disconnect_parent_"):
             parent_id = param.replace("disconnect_parent_", "")
+            # Schedule the disconnect task asynchronously
             context.application.create_task(handle_disconnect(update, parent_id))
-
-            # CRITICAL: Update local persistence AFTER successful API call
+            # Update local persistence after API call
             await _delete_parent_id_from_persistence(chat_id)
             return
 
-        # --- CONNECT LOGIC ---
+        # --- Connect ---
         elif param.startswith("parent_"):
             parent_id = param.replace("parent_", "")
-            await handle_connect(update, parent_id, chat_id)
-            # CRITICAL: Update local persistence AFTER successful API call
+            context.application.create_task(handle_connect(update, parent_id, chat_id))
             await _set_parent_id_in_persistence(chat_id, parent_id)
             return
-            
-    # Default message if no parameter or unrecognized parameter
+
+    # Default message
     await update.message.reply_text(
         "👋 Hello\\! Please open the link from your parent profile to connect or disconnect\\.",
         parse_mode=ParseMode.MARKDOWN_V2
@@ -493,21 +487,14 @@ async def setup_menu_button():
 app_initialized = False
 
 def process_update_sync(update_data: dict):
-    import asyncio
     from telegram import Update
-    global app_initialized
+    import asyncio
 
     try:
         update = Update.de_json(update_data, app.bot)
-
-        # Initialize only once
-        if not app_initialized:
-            asyncio.run(app.initialize())
-            app_initialized = True
-
-        # Process the update
-        asyncio.run(app.process_update(update))
-
+        # Get running loop (or create one)
+        loop = asyncio.get_event_loop()
+        loop.create_task(app.process_update(update))
     except Exception as e:
         logger.exception(f"Error processing Telegram update: {e}")
 
