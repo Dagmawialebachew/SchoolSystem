@@ -174,9 +174,12 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /start command, including connection and disconnection links."""
     if not update.message:
+        logger.warning("No update.message in /start")
         return
         
     logger.info("Bot received /start")
+    logger.info(f"Received /start: {update.message.text} from chat_id {update.effective_chat.id}")
+
     message_text = update.message.text
     chat_id = update.effective_chat.id
     
