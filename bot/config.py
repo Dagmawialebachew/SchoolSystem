@@ -5,7 +5,7 @@ TELEGRAM_BOT_TOKEN = "8141768447:AAE-sk9IROgjZWmaJEI5iU4R9rL1QyzrV7k"
 # CRITICAL FIX: Changing from 127.0.0.1 to the public hostname with 'http://'
 # This forces PythonAnywhere's internal loopback mechanism to reliably hit 
 # the Django WSGI application instead of a placeholder page or the wrong port.
-BASE_API_URL_INTERNAL = "http://schoolsys.pythonanywhere.com" 
+BASE_API_URL_INTERNAL = "https://schoolsys.pythonanywhere.com" 
 
 # Adjust these to use the internal base URL
 DJANGO_API_URL_CONNECT = f"{BASE_API_URL_INTERNAL}/parents/api/save_chat_id/"
