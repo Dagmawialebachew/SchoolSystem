@@ -108,10 +108,18 @@ async def _delete_parent_id_from_persistence(chat_id: int) -> None:
 # 4. Utility Functions
 # ----------------------
 
-def escape_markdown_v2(text: str) -> str:
-    """Escapes special characters in MarkdownV2 to prevent formatting errors."""
-    # Escape the backslash itself first, then all other special characters
-    special_chars = r'_*[]()~`>#+-=|{}.!'
+import re
+
+def escape_markdown_v2(text) -> str:
+    """
+    Escapes special characters in MarkdownV2 to prevent formatting errors.
+    Always returns a safe string, even if input is None or not a string.
+    """
+    if text is None:
+        return "N/A"
+    # Ensure it's a string (handles numbers, etc.)
+    text = str(text)
+    # Escape all MarkdownV2 special characters
     return re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMarkup]:
@@ -360,7 +368,7 @@ async def handle_view_invoices(update: Update, context: ContextTypes.DEFAULT_TYP
     else:
         text = "*Unpaid Invoices:*\n\n"
         for inv in invoices:
-            description = escape_markdown_v2(inv.get('description', 'N/A'))
+            invoice_name = escape_markdown_v2(inv.get('invoice_name', 'N/A'))
             
             # Currency formatting for balance
             raw_balance = inv.get('balance', 0)
@@ -377,7 +385,7 @@ async def handle_view_invoices(update: Update, context: ContextTypes.DEFAULT_TYP
             due_date = escape_markdown_v2(inv.get('due_date', 'N/A'))
             
             # Note: Using bullet point and escaped text
-            text += f"• {description} \\- {balance} ETB \\(Due: {due_date}\\)\n"
+            text += f"• {invoice_name} \\- {balance} ETB \\(Due: {due_date}\\)\n"
 
     # --- NAVIGATION BUTTONS (Student-specific) ---
     buttons = [

@@ -4,7 +4,7 @@ TELEGRAM_BOT_TOKEN = "8141768447:AAE-sk9IROgjZWmaJEI5iU4R9rL1QyzrV7k"
 # --- INTERNAL API URLs (Bot-to-Django Communication) ---
 # CRITICAL FIX: Use http://127.0.0.1 for internal loopback on PythonAnywhere
 # This bypasses the platform's outbound connection restrictions.
-BASE_API_URL_INTERNAL = "http://127.0.0.1:80" 
+BASE_API_URL_INTERNAL = "http://127.0.0.1:8000" 
 
 # Adjust these to use the internal base URL
 DJANGO_API_URL_CONNECT = f"{BASE_API_URL_INTERNAL}/parents/api/save_chat_id/"

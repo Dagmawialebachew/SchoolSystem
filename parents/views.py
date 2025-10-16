@@ -955,6 +955,7 @@ class StudentUnpaidInvoicesView(View):
         for inv in invoices:
             data.append({
                 "invoice_id": inv.id,
+                "invoice_name": inv.fee.name,
                 "student_id": inv.student.id,
                 "student_name": inv.student.full_name,
                 "description": getattr(inv, "description", inv.fee.name if inv.fee else "N/A"),
