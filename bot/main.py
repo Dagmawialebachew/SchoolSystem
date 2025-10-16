@@ -450,26 +450,24 @@ async def setup_menu_button():
 
 # ----------------------
 # Synchronous processing function for threading (Webhook handler)
-# ----------------------
+
 def process_update_sync(update_data):
     """
-    Called by the Django/PythonAnywhere web worker to handle incoming updates.
-    It runs the async PTB handler inside a dedicated loop.
+    Handles incoming Telegram updates from the webhook.
+    Runs the async PTB handler inside a dedicated loop per thread.
     """
     try:
-        async_to_sync(app.initialize)() 
-    except Exception as e:
-        logger.warning(f"Thread app initialization failed: {e}")
-
-    try:
-        # Must re-create/set the loop as the Django worker thread won't have one
+        # Convert JSON to Telegram Update object
         update = Update.de_json(update_data, app.bot)
+        
+        # Each thread gets its own event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(app.process_update(update))
         loop.close()
+
     except Exception as e:
-        logger.error(f"Thread error during process_update: {e}")
+        logger.error(f"❌ Error in webhook thread: {e}")
 
 
 def run_async(update):
@@ -501,11 +499,10 @@ async def setup_webhook():
 
 
 import asyncio
-
 def start_background_bot():
     """
-    Starts the PTB application in webhook-compatible background mode.
-    Ensures app.initialize() and app.start() are called once.
+    Starts the PTB Application in a background async loop (for webhook mode).
+    This ensures initialize() and start() are called exactly once.
     """
     async def runner():
         try:
@@ -513,14 +510,11 @@ def start_background_bot():
             await app.start()
             logger.info("🚀 Telegram bot background task started.")
         except Exception as e:
-            logger.error(f"❌ Failed to start Telegram bot background task: {e}")
+            logger.error(f"❌ Failed to start background bot: {e}")
 
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
+    # Create a dedicated loop for background tasks
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     loop.create_task(runner())
 
 # Run background listener when imported by Django (not in polling mode)

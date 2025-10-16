@@ -2,6 +2,7 @@ from decimal import Decimal
 from email.mime import message
 import json
 from datetime import date
+from venv import logger
 from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -795,29 +796,20 @@ from django.http import HttpResponse
 import json
 import threading
 from bot.main import process_update_sync # Import the new function
-
 @csrf_exempt
 def telegram_webhook(request):
     if request.method != 'POST':
         return HttpResponse('Method Not Allowed', status=405)
     
     try:
-        # 1. Capture the raw update data
         update_data = json.loads(request.body.decode('utf-8'))
-        
-        # 2. Start a new thread to handle the slow API call and reply
-        thread = threading.Thread(target=process_update_sync, args=(update_data,))
-        thread.start()
-
-        # 3. CRITICAL: IMMEDIATELY return 200 OK to Telegram!
-        return HttpResponse('ok', status=200) 
+        threading.Thread(target=process_update_sync, args=(update_data,)).start()
+        return HttpResponse('ok', status=200)
 
     except Exception as e:
-        # If the JSON parsing fails, we still return 200 to prevent retry storms
-        print(f"❌ Webhook parsing/threading error: {e}")
+        logger.error(f"❌ Webhook parsing/threading error: {e}")
         return HttpResponse('ok', status=200)
-    
-    
+
     
 
 
