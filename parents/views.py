@@ -793,27 +793,31 @@ from telegram.ext import Application # We might need this for the type hint
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 import json
+import threading
 from bot.main import process_update_sync # Import the new function
-import json, traceback
 
 @csrf_exempt
 def telegram_webhook(request):
-    if request.method != "POST":
-        return HttpResponse(status=405)
-
+    if request.method != 'POST':
+        return HttpResponse('Method Not Allowed', status=405)
+    
     try:
-        data = json.loads(request.body.decode("utf-8"))
-        process_update_sync(data)  # ✅ actually handle the update
-        print("✅ Telegram update processed successfully.")
-    except Exception as e:
-        print("\n" + "="*50)
-        print("!!! UNHANDLED WEBHOOK EXCEPTION !!!")
-        print(f"ERROR: {e}")
-        traceback.print_exc()
-        print("="*50 + "\n")
-        return JsonResponse({"status": "error"}, status=200)
+        # 1. Capture the raw update data
+        update_data = json.loads(request.body.decode('utf-8'))
+        
+        # 2. Start a new thread to handle the slow API call and reply
+        thread = threading.Thread(target=process_update_sync, args=(update_data,))
+        thread.start()
 
-    return JsonResponse({"status": "ok"}, status=200) 
+        # 3. CRITICAL: IMMEDIATELY return 200 OK to Telegram!
+        return HttpResponse('ok', status=200) 
+
+    except Exception as e:
+        # If the JSON parsing fails, we still return 200 to prevent retry storms
+        print(f"❌ Webhook parsing/threading error: {e}")
+        return HttpResponse('ok', status=200)
+    
+    
     
 
 
