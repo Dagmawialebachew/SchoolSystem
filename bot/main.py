@@ -499,6 +499,34 @@ async def setup_webhook():
     await setup_menu_button()
 
 
+
+import asyncio
+
+def start_background_bot():
+    """
+    Starts the PTB application in webhook-compatible background mode.
+    Ensures app.initialize() and app.start() are called once.
+    """
+    async def runner():
+        try:
+            await app.initialize()
+            await app.start()
+            logger.info("🚀 Telegram bot background task started.")
+        except Exception as e:
+            logger.error(f"❌ Failed to start Telegram bot background task: {e}")
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    loop.create_task(runner())
+
+# Run background listener when imported by Django (not in polling mode)
+if os.environ.get("PYTHONANYWHERE_DOMAIN"):
+    start_background_bot()
+    
 # ----------------------
 # Local polling (Unchanged for local testing)
 # ----------------------
