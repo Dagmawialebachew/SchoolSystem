@@ -480,31 +480,37 @@ def process_update_sync(update_data: Dict[str, Any]):
     Runs the async PTB handler inside a dedicated loop per thread.
     
     CRITICAL FIX: Explicitly sets up Django and initializes the PTB Application
-    to ensure thread safety and access to ORM.
+    by running the necessary async calls inside the thread's new event loop.
     """
     try:
-        # CRITICAL FIX for crashes in background thread (Django setup)
-        # Ensure Django ORM is ready in this new thread's context
+        # 1. CRITICAL: Ensure Django ORM is ready in this new thread's context
         if not django.apps.apps.ready:
             os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
             django.setup()
             logger.debug("Django setup executed in webhook thread.")
              
-        # Convert JSON to Telegram Update object
+        # 2. Convert JSON to Telegram Update object
         update = Update.de_json(update_data, app.bot)
         
-        # CRITICAL FIX: Initialize the application instance for this thread before processing
-        if not app.running:
-            app.initialize() 
-            
-        # Each thread gets its own event loop
+        # 3. Define the asynchronous sequence of operations
+        async def run_update_sequence():
+            """
+            This sequence runs the necessary initialization and then processes the update.
+            """
+            if not app.running:
+                # CRITICAL FIX: Await the initialization call
+                await app.initialize()
+                
+            await app.process_update(update)
+        
+        # 4. Each thread gets its own event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
-        # Run the asynchronous processing task
-        loop.run_until_complete(app.process_update(update))
+        # 5. Run the asynchronous task sequence synchronously
+        loop.run_until_complete(run_update_sequence())
         
-        # Clean up the loop
+        # 6. Clean up the loop
         loop.close()
 
     except Exception as e:
