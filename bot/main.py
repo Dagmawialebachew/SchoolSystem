@@ -540,6 +540,18 @@ async def run_bot_async():
 if os.environ.get("PYTHONANYWHERE_DOMAIN"):
     start_background_bot()
 
+import asyncio
+
+async def safe_set_webhook(url):
+    for attempt in range(5):
+        try:
+            await app.bot.set_webhook(url)
+            return True
+        except Exception as e:
+            if "429" in str(e):
+                await asyncio.sleep(1 + attempt)  # simple exponential backoff
+            else:
+                raise
 
 # ----------------------
 # Local polling (Unchanged for local testing)
