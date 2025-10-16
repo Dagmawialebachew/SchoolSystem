@@ -14,46 +14,40 @@ import asyncio
 import aiohttp
 import logging
 import re
-
 import os
 import django
-from django.apps import apps # CRITICAL: Import 'apps' to check registry status
+from django.apps import apps
 from typing import Dict, Any, Tuple, Optional
 
-# --- 1. CRITICAL DJANGO SETUP ---
-# Set Django settings module environment variable
+# ----------------------
+# 1. Django Setup
+# ----------------------
 if not os.getenv("DJANGO_SETTINGS_MODULE"):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
 
-# Ensure Django is set up before any model imports for main thread/module scope
 if not apps.ready:
     try:
-        # Calls django.setup() to load the app registry and models
         django.setup()
-        logging.info("DEBUG: Django environment successfully set up during module import.")
+        logging.info("DEBUG: Django environment successfully set up.")
     except Exception as e:
-        # This warning is okay, as it will be re-attempted in the webhook thread
-        logging.warning(f"Warning: Initial Django setup failed at module level: {e}")
+        logging.warning(f"Warning: Initial Django setup failed: {e}")
 
-# IMPORTANT: These imports must be configured in your bot/config.py
+# Config import
 try:
     from bot.config import (
         DJANGO_API_URL_DISCONNECT,
         TELEGRAM_BOT_TOKEN,
         DJANGO_API_URL_CONNECT,
         DJANGO_API_URL_FEE,
-        WEB_APP_BASE_URL # Must be set to 'http://schoolsys.pythonanywhere.com'
+        WEB_APP_BASE_URL
     )
 except ImportError:
-    # Fail loudly if config is missing
-    raise ImportError("Configuration file 'bot/config.py' not found or is missing required variables.")
+    raise ImportError("Configuration file 'bot/config.py' missing or incomplete.")
 
-# CRITICAL FIX: The model import is now safe, as it runs after django.setup() above.
-# We assume 'ParentProfile' is accessible after setup.
 from parents.models import ParentProfile 
 
 # ----------------------
-# 2. Logging setup
+# 2. Logging
 # ----------------------
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -62,91 +56,64 @@ logging.basicConfig(
 logger = logging.getLogger("SchoolBot")
 
 # ----------------------
-# 3. Persistence using Async Django ORM
+# 3. Persistence (Async ORM)
 # ----------------------
-
 async def _get_parent_id_from_persistence(chat_id: int) -> Optional[str]:
-    """Look up the parent_id (UUID) from the ParentProfile model using chat_id."""
     try:
-        # Use aget for asynchronous lookup
-        # We need to query on the telegram_chat_id field
         parent = await ParentProfile.objects.aget(telegram_chat_id=str(chat_id))
-        # The return value is the ParentProfile's primary key (usually a UUID)
         return str(parent.id)
     except ParentProfile.DoesNotExist:
         return None
     except Exception as e:
-        logger.error(f"Error getting parent ID from DB for chat {chat_id}: {e}")
+        logger.error(f"Error getting parent ID for chat {chat_id}: {e}")
         return None
 
 async def _set_parent_id_in_persistence(chat_id: int, parent_id: str) -> None:
-    """Store the chat_id on the ParentProfile record associated with parent_id."""
     try:
-        # parent_id here should be the ParentProfile.id used to find the record
         parent = await ParentProfile.objects.aget(id=parent_id)
         parent.telegram_chat_id = str(chat_id)
-        # Use sync_to_async for synchronous .save() call
         await sync_to_async(parent.save)()
     except ParentProfile.DoesNotExist:
-        logger.warning(f"ParentProfile with ID {parent_id} not found during connection.")
+        logger.warning(f"ParentProfile {parent_id} not found.")
     except Exception as e:
-        logger.error(f"Error setting parent ID in DB for parent {parent_id}: {e}")
+        logger.error(f"Error setting parent ID {parent_id}: {e}")
 
 async def _delete_parent_id_from_persistence(chat_id: int) -> None:
-    """Remove the chat_id from the ParentProfile record."""
     try:
         parent = await ParentProfile.objects.aget(telegram_chat_id=str(chat_id))
         parent.telegram_chat_id = None
-        # Use sync_to_async for synchronous .save() call
         await sync_to_async(parent.save)()
     except ParentProfile.DoesNotExist:
         pass
     except Exception as e:
-        logger.error(f"Error deleting parent ID from DB for chat {chat_id}: {e}")
+        logger.error(f"Error deleting parent ID for chat {chat_id}: {e}")
 
 # ----------------------
-# 4. Utility Functions
+# 4. Utilities
 # ----------------------
-
-import re
-
 def escape_markdown_v2(text) -> str:
-    """
-    Escapes special characters in MarkdownV2 to prevent formatting errors.
-    Always returns a safe string, even if input is None or not a string.
-    """
     if text is None:
         return "N/A"
-    # Ensure it's a string (handles numbers, etc.)
     text = str(text)
-    # Escape all MarkdownV2 special characters
     return re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMarkup]:
-    """Generates the message and inline keyboard for a single student summary."""
     student_id = s.get("student_id", "N/A")
-
-    # Safely escape all API data
     student_name = escape_markdown_v2(str(s.get("student_name", "Student N/A")))
     
-    # Safely handle and format money amounts
     def format_currency(raw_amount):
         try:
             amount = float(raw_amount)
             if amount.is_integer():
                 return escape_markdown_v2(f"{int(amount):,}")
-            else:
-                return escape_markdown_v2(f"{amount:,.2f}")
+            return escape_markdown_v2(f"{amount:,.2f}")
         except (ValueError, TypeError):
             return escape_markdown_v2("0.00")
 
     formatted_unpaid = format_currency(s.get("total_unpaid", s.get("total", 0)))
     formatted_paid = format_currency(s.get("total_paid", 0))
-
-    # --- Nearest due ---
     nearest_due = escape_markdown_v2(str(s.get("nearest_due", "N/A")))
 
-    # --- Build the message ---
     message = (
         f"📚 *{student_name}*\n\n"
         f"💵 *Unpaid Invoices:* {s.get('count', 0)}\n"
@@ -155,7 +122,6 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
         f"📅 *Nearest Due:* {nearest_due}"
     )
 
-    # --- Inline buttons (Using WEB_APP_BASE_URL) ---
     buttons = [
         [
             InlineKeyboardButton("🔍 View Invoices", callback_data=f"view_invoices_{student_id}"),
@@ -165,106 +131,73 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
             InlineKeyboardButton("💳 Pay", url=f"{WEB_APP_BASE_URL}/parents/fees/child/{student_id}/"),
         ]
     ]
-
     return message, InlineKeyboardMarkup(buttons)
 
 # ----------------------
-# 5. Telegram Bot Handlers
+# 5. Bot Handlers
 # ----------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles /start command, including connection and disconnection links."""
     if not update.message:
-        logger.warning("No update.message in /start")
         return
-        
-    logger.info("Bot received /start")
-    logger.info(f"Received /start: {update.message.text} from chat_id {update.effective_chat.id}")
-
-    message_text = update.message.text
     chat_id = update.effective_chat.id
-    
-    # Check if there is a parameter (e.g., /start parent_XYZ)
-    if len(message_text.split()) > 1:
-        param = message_text.split()[1]
+    msg_text = update.message.text
 
-        # --- DISCONNECT LOGIC ---
+    if len(msg_text.split()) > 1:
+        param = msg_text.split()[1]
         if param.startswith("disconnect_parent_"):
             parent_id = param.replace("disconnect_parent_", "")
             await handle_disconnect(update, parent_id)
-            # CRITICAL: Update local persistence AFTER successful API call
             await _delete_parent_id_from_persistence(chat_id)
             return
-
-        # --- CONNECT LOGIC ---
         elif param.startswith("parent_"):
             parent_id = param.replace("parent_", "")
             await handle_connect(update, parent_id, chat_id)
-            # CRITICAL: Update local persistence AFTER successful API call
             await _set_parent_id_in_persistence(chat_id, parent_id)
             return
-            
-    # Default message if no parameter or unrecognized parameter
+
     await update.message.reply_text(
         "👋 Hello\\! Please open the link from your parent profile to connect or disconnect\\.",
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
 async def handle_connect(update: Update, parent_id: str, chat_id: int):
-    """Calls the Django API to connect the Telegram chat ID."""
-    logger.info(f"Attempting CONNECT for parent {parent_id} with chat_id {chat_id}")
-    await update.effective_chat.send_chat_action(ChatAction.TYPING) 
-    
+    logger.info(f"Connecting parent {parent_id} with chat {chat_id}")
+    await update.effective_chat.send_chat_action(ChatAction.TYPING)
     async with aiohttp.ClientSession() as session:
         try:
-            # API call to Django to store the chat_id
-            async with session.post(
-                DJANGO_API_URL_CONNECT, 
-                json={"parent_id": parent_id, "chat_id": str(chat_id)}
-            ) as resp:
-                resp_json = await resp.json(content_type=None)
-                
-                if resp.status == 200 and resp_json.get("success"):
+            async with session.post(DJANGO_API_URL_CONNECT, json={"parent_id": parent_id, "chat_id": str(chat_id)}) as resp:
+                data = await resp.json(content_type=None)
+                if resp.status == 200 and data.get("success"):
                     await update.message.reply_text(
-                        "✅ Your Telegram is now connected to your school account\\! "
-                        "You can now use commands like /fees\\. "
-                        "Please refresh your browser page to see the updated status\\.",
+                        "✅ Connected successfully\\! You can now use /fees\\.",
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 else:
-                    error_msg = resp_json.get("error", f"API responded with status {resp.status}")
-                    safe_error = escape_markdown_v2(error_msg)
-                    await update.message.reply_text(f"⚠️ Failed to connect\\. Details: {safe_error}")
+                    await update.message.reply_text(f"⚠️ Failed: {escape_markdown_v2(str(data.get('error', resp.status)))}")
         except Exception as e:
-            logger.exception(f"Error connecting parent {parent_id}: {e}")
-            await update.message.reply_text("⚠️ Unexpected error during connection due to network or server issue\\.")
-
+            logger.exception(e)
+            await update.message.reply_text("⚠️ Unexpected error during connection\\.")
 
 async def handle_disconnect(update: Update, parent_id: str):
-    """Calls the Django API to disconnect the Telegram chat ID."""
-    logger.info(f"Attempting DISCONNECT for parent {parent_id}")
-    await update.effective_chat.send_chat_action(ChatAction.TYPING) 
-    
+    logger.info(f"Disconnecting parent {parent_id}")
+    await update.effective_chat.send_chat_action(ChatAction.TYPING)
     async with aiohttp.ClientSession() as session:
         try:
-            # API call to Django to remove the chat_id
-            async with session.post(
-                DJANGO_API_URL_DISCONNECT, 
-                json={"parent_id": parent_id}
-            ) as resp:
-                resp_json = await resp.json(content_type=None)
-                
-                if resp.status == 200 and resp_json.get("success"):
+            async with session.post(DJANGO_API_URL_DISCONNECT, json={"parent_id": parent_id}) as resp:
+                data = await resp.json(content_type=None)
+                if resp.status == 200 and data.get("success"):
                     await update.message.reply_text(
-                        "❌ Your Telegram has been disconnected from your school account\\.",
+                        "❌ Disconnected successfully\\.",
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 else:
-                    error_msg = resp_json.get("error", f"API responded with status {resp.status}")
-                    safe_error = escape_markdown_v2(error_msg)
-                    await update.message.reply_text(f"⚠️ Failed to disconnect\\. Details: {safe_error}")
+                    await update.message.reply_text(f"⚠️ Failed: {escape_markdown_v2(str(data.get('error', resp.status)))}")
         except Exception as e:
-            logger.exception(f"Error disconnecting parent {parent_id}: {e}")
-            await update.message.reply_text("⚠️ Unexpected error during disconnection due to network or server issue\\.")
+            logger.exception(e)
+            await update.message.reply_text("⚠️ Unexpected error during disconnection\\.")
+
+# fees, help_command, handle_view_invoices, handle_back_to_fees remain unchanged
+# (Insert all previously defined async handlers here)
 
 async def fees(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends unpaid fee summary for each student."""
@@ -446,101 +379,63 @@ async def handle_back_to_fees(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 # ----------------------
-# 7. Application Setup & Initialization
+# 6. Application Setup
 # ----------------------
-
-# Initialize the Application instance once
 builder = Application.builder().token(TELEGRAM_BOT_TOKEN)
-app = builder.build() 
+app = builder.build()
 
-# Add Handlers
+# Command Handlers
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("fees", fees)) 
+app.add_handler(CommandHandler("fees", fees))
 app.add_handler(CommandHandler("help", help_command))
-app.add_handler(CallbackQueryHandler(handle_view_invoices, pattern=r"^view_invoices_(\d+)$")) 
+app.add_handler(CallbackQueryHandler(handle_view_invoices, pattern=r"^view_invoices_(\d+)$"))
 app.add_handler(CallbackQueryHandler(handle_back_to_fees, pattern=r"^back_to_student_(\d+)$"))
 
-
 # ----------------------
-# 8. Menu Button Setup
+# 7. Menu Button Setup
 # ----------------------
 async def setup_menu_button():
-    """Sets the persistent 'Open School App' button."""
     try:
-        # The URL for the Web App button. This points to your main dashboard.
-        app_url = f"{WEB_APP_BASE_URL}/parents/dashboard/"
-        
-        # 1. Create the WebAppInfo object
-        web_app_info = WebAppInfo(url=app_url)
-        
-        # 2. Define the MenuButtonWebApp using the WebAppInfo object
-        menu_button = MenuButtonWebApp(text="Open School App", web_app=web_app_info)
-        
-        # Set the menu button for all users.
+        menu_button = MenuButtonWebApp(
+            text="Open School App",
+            web_app=WebAppInfo(url=f"{WEB_APP_BASE_URL}/parents/dashboard/")
+        )
         await app.bot.set_chat_menu_button(menu_button=menu_button)
-        logger.info(f"✅ Menu button set successfully to: {app_url}")
     except Exception as e:
-        logger.error(f"❌ Failed to set menu button: {e}")
+        logger.error(f"Failed to set menu button: {e}")
 
 # ----------------------
-# 9. Synchronous processing function for threading (Webhook handler)
+# 8. Thread-Safe Webhook Update Processing
 # ----------------------
-#----------------------
-
 def process_update_sync(update_data: dict):
-    """
-    Handles incoming Telegram updates from the webhook.
-    Uses asyncio.run() to safely execute the async bot processing.
-    """
     import asyncio
     from telegram import Update
-
     try:
         update = Update.de_json(update_data, app.bot)
-
-        # Run async processing safely
-        asyncio.run(app.process_update(update))
-
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(app.process_update(update))
+        loop.close()
     except Exception as e:
-        import logging
-        logger = logging.getLogger("SchoolBot")
         logger.exception(f"Error processing Telegram update: {e}")
 
-# 10. Webhook setup function (Correct for PythonAnywhere)
+# ----------------------
+# 9. Webhook Setup for PythonAnywhere
 # ----------------------
 async def setup_webhook():
-    """Sets up the Telegram webhook and persistent menu button safely on PythonAnywhere."""
-    
-    # --- PythonAnywhere domain & webhook path ---
+    await app.initialize()  # Critical fix
+    await app.bot.delete_webhook()
     DOMAIN = "schoolsys.pythonanywhere.com"
     WEBHOOK_PATH = "/parents/telegram-webhook/"
     WEBHOOK_URL = f"https://{DOMAIN}{WEBHOOK_PATH}"
-
-    # --- Initialize bot properly ---
-    await app.initialize()
-    bot = app.bot
-
-    # --- Delete old webhook ---
-    await bot.delete_webhook()
-    logger.info("Old webhook deleted.")
-
-    # --- Set new webhook ---
-    await bot.set_webhook(url=WEBHOOK_URL)
-    logger.info(f"✅ Webhook set successfully: {WEBHOOK_URL}")
-
-    # --- Set persistent menu button with HTTPS ---
-    try:
-        await setup_menu_button()
-        logger.info("✅ Persistent menu button set successfully.")
-    except Exception as e:
-        logger.error(f"❌ Failed to set menu button: {e}")
+    await app.bot.set_webhook(url=WEBHOOK_URL)
+    await setup_menu_button()
+    logger.info(f"✅ Webhook set: {WEBHOOK_URL}")
 
 # ----------------------
-# 11. Local polling entry point
+# 10. Local Polling (Development)
 # ----------------------
 if __name__ == "__main__":
-    # If you run this file directly, it will run in polling mode (local development)
-    logger.info("🤖 Bot running locally (polling mode)")
-    # NOTE: In local development, you might want to call setup_menu_button() 
-    # explicitly here if you aren't using the webhook entry point.
+    logger.info("Bot running locally (polling mode)")
+    asyncio.run(setup_menu_button())
     app.run_polling()
