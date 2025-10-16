@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.db.models import Count, Sum, Q, F
@@ -124,8 +124,7 @@ def dashboard(request):
     elif request.user.is_teacher():
         return TeacherDashboardView.as_view()(request)
     elif request.user.is_parent():
-        print('the user is parent i mean ', request.user.role)
-        return reverse_lazy('parents:dashboard')
+        return redirect('parents:dashboard')
     elif request.user.role == "SUPER_ADMIN":
         return AdminDashboardView.as_view()(request)
     

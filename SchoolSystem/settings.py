@@ -7,7 +7,7 @@ load_dotenv(BASE_DIR / ".env")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 
@@ -35,7 +35,6 @@ PROJECT_APPS = [
     'documents',
     'notifications',
     'dashboard',
-    # 'django_browser_reload',
     "widget_tweaks",
     "crispy_forms",
     "crispy_tailwind",
@@ -57,7 +56,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django_browser_reload.middleware.BrowserReloadMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -67,6 +65,7 @@ MIDDLEWARE = [
 ]
 
 # Security headers
+print('here is the value of DEBUG in settings.py', DEBUG)
 if DEBUG:
     # Development
     INSTALLED_APPS += ['django_browser_reload']
