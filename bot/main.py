@@ -488,25 +488,26 @@ async def setup_menu_button():
 # ----------------------
 #----------------------
 
+# At module level
+app_initialized = False
+
 def process_update_sync(update_data: dict):
-    """
-    Handles incoming Telegram updates from the webhook.
-    Uses asyncio.run() to safely execute the async bot processing.
-    """
     import asyncio
     from telegram import Update
+    global app_initialized
 
     try:
         update = Update.de_json(update_data, app.bot)
-        if not app.is_initialized:
-            asyncio.run(app.initialize())
 
-        # Run async processing safely
+        # Initialize only once
+        if not app_initialized:
+            asyncio.run(app.initialize())
+            app_initialized = True
+
+        # Process the update
         asyncio.run(app.process_update(update))
 
     except Exception as e:
-        import logging
-        logger = logging.getLogger("SchoolBot")
         logger.exception(f"Error processing Telegram update: {e}")
 
 # 10. Webhook setup function (Correct for PythonAnywhere)
