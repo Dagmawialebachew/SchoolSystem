@@ -2,7 +2,6 @@ from decimal import Decimal
 from email.mime import message
 import json
 from datetime import date
-import traceback
 from django.contrib import messages
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -794,66 +793,26 @@ from telegram.ext import Application # We might need this for the type hint
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 import json
-import threading
 from bot.main import process_update_sync # Import the new function
-
-try:
-    from telegram import Update
-    from bot.main import app
-    print("✅ Initial bot/telegram imports successful.")
-except ImportError as e:
-    # If this fails, this is the root error!
-    print(f"❌ CRITICAL IMPORT ERROR during Django startup: {e}")
-
+import json, traceback
 
 @csrf_exempt
 def telegram_webhook(request):
-    """
-    Handles incoming Telegram webhook updates.
-
-    Includes aggressive try/except logic to ensure the root error 
-    is printed to the PythonAnywhere Server Log instead of the 
-    recursive Error Log.
-    """
-    # 1. Reject non-POST requests immediately
-    if request.method != 'POST':
-        print("🛑 Received non-POST request. Returning 405.")
+    if request.method != "POST":
         return HttpResponse(status=405)
 
     try:
-        # 2. Decode the incoming JSON data
         data = json.loads(request.body.decode("utf-8"))
-        
-        # 3. Create the Telegram Update object
-        # NOTE: If 'Update' is not defined here, check your 'try/except' block above.
-        update = Update.de_json(data, app.bot)
-        
-        # 4. Put the update into the application's queue
-        app.update_queue.put(update)
-        
-        # Log success directly to bypass standard logging handlers
-        print(f"✅ Received and queued Telegram update successfully. Update ID: {update.update_id}")
-        
+        process_update_sync(data)  # ✅ actually handle the update
+        print("✅ Telegram update processed successfully.")
     except Exception as e:
-        # 🚨 CATCH THE REAL ERROR AND PRINT IT 🚨
-        
-        # Print the specific error message
         print("\n" + "="*50)
         print("!!! UNHANDLED WEBHOOK EXCEPTION !!!")
-        print(f"ERROR TYPE: {type(e).__name__}")
-        print(f"ERROR MESSAGE: {e}")
-        print("="*50)
-        
-        # Print the full stack trace to show where the error originated
-        print("FULL TRACEBACK:")
+        print(f"ERROR: {e}")
         traceback.print_exc()
         print("="*50 + "\n")
-        
-        # Important: Return a 200 OK to Telegram, regardless of internal failure, 
-        # so it stops retrying the webhook endlessly.
-        return JsonResponse({"status": "internal_error", "message": "Logged issue internally."}, status=200)
+        return JsonResponse({"status": "error"}, status=200)
 
-    # 5. Always return a 200 OK to Telegram
     return JsonResponse({"status": "ok"}, status=200) 
     
 
