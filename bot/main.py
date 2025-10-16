@@ -453,7 +453,6 @@ async def handle_back_to_fees(update: Update, context: ContextTypes.DEFAULT_TYPE
 builder = Application.builder().token(TELEGRAM_BOT_TOKEN)
 app = builder.build() 
 
-asyncio.run(app.initialize())
 
 # Add Handlers
 app.add_handler(CommandHandler("start", start))
@@ -499,6 +498,8 @@ def process_update_sync(update_data: dict):
 
     try:
         update = Update.de_json(update_data, app.bot)
+        if not app.is_initialized:
+            asyncio.run(app.initialize())
 
         # Run async processing safely
         asyncio.run(app.process_update(update))
