@@ -789,28 +789,51 @@ import json
 from bot.main import app, run_async
 
 
-from telegram.ext import Application # We might need this for the type hint
-
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
 import json
 import threading
-from bot.main import process_update_sync # Import the new function
+import logging # <-- CRITICAL: Must import or define logger here
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+from bot.main import process_update_sync # Import the function
+
+# Set up logging for this specific file/view
+logger = logging.getLogger(__name__)
+
 @csrf_exempt
 def telegram_webhook(request):
+    """
+    Receives Telegram webhook updates (POST request).
+    The processing is immediately offloaded to a new thread
+    to ensure an instant HTTP 200 response back to Telegram.
+    """
+    # 1. Immediate Method Check
     if request.method != 'POST':
+        logger.warning(f"Received non-POST request: {request.method}")
         return HttpResponse('Method Not Allowed', status=405)
     
+    # 2. Extract Data Safely and Respond Instantly
     try:
+        # Read and decode the raw request body
         update_data = json.loads(request.body.decode('utf-8'))
+        
+        # OFF-LOAD: Start a new thread to handle the long-running async bot processing.
+        # This thread immediately calls process_update_sync(update_data).
         threading.Thread(target=process_update_sync, args=(update_data,)).start()
+        
+        # CRITICAL: Return success (200 OK) immediately to Telegram.
+        # This prevents Telegram from marking the webhook as failed or retrying.
         return HttpResponse('ok', status=200)
+
+    except json.JSONDecodeError:
+        logger.error("❌ Webhook received non-JSON or invalid JSON data.")
+        return HttpResponse('Invalid JSON', status=400)
 
     except Exception as e:
-        logger.error(f"❌ Webhook parsing/threading error: {e}")
-        return HttpResponse('ok', status=200)
+        # This catches errors in parsing or starting the thread, NOT bot processing errors
+        logger.error(f"❌ Webhook handling error: {e}")
+        # Still return 200 to prevent Telegram retries, as the issue is on your server.
+        return HttpResponse('ok (error during handling)', status=200)
 
-    
 
 
 # parents/views.py
