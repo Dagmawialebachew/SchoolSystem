@@ -789,44 +789,38 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from bot.main import process_update_sync # Import the function
 
+logger = logging.getLogger(__name__)  # <-- CRITICAL: Define logger here
+
+
 @csrf_exempt
 def telegram_webhook(request):
     """
-    Receives Telegram webhook updates (POST request).
-    The processing is immediately offloaded to a new thread
-    to ensure an instant HTTP 200 response back to Telegram.
+    Receives Telegram webhook updates (POST request) and immediately offloads processing.
+    Returns 200 OK instantly to Telegram to avoid retries.
     """
-    # 1. Immediate Method Check
     if request.method != 'POST':
-        print(f"WARNING: Received non-POST request: {request.method}")
+        logger.warning(f"Received non-POST request: {request.method}")
         return HttpResponse('Method Not Allowed', status=405)
-    
-    # 2. Extract Data Safely and Respond Instantly
+
     try:
-        # Read and decode the raw request body
+        # Decode incoming JSON update
         update_data = json.loads(request.body.decode('utf-8'))
-        
-        # OFF-LOAD: Start a new thread to handle the long-running async bot processing.
-        # We start the thread with the data, relying on process_update_sync to
-        # handle Django's setup within the new thread context.
-        thread = threading.Thread(target=process_update_sync, args=(update_data,))
-        thread.daemon = True # Allows the main process to exit even if the thread is running
-        thread.start()
-        
-        # CRITICAL: Return success (200 OK) immediately to Telegram.
-        print("INFO: Webhook received, offloaded to thread, returning 200 OK.")
+
+        # Offload processing to a thread-safe executor
+        import concurrent.futures
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        executor.submit(process_update_sync, update_data)
+
+        logger.info("Webhook received and offloaded successfully.")
         return HttpResponse('ok', status=200)
 
     except json.JSONDecodeError:
-        print("ERROR: Webhook received non-JSON or invalid JSON data.")
+        logger.error("Received invalid JSON in webhook request.")
         return HttpResponse('Invalid JSON', status=400)
 
     except Exception as e:
-        # This catches errors in parsing or starting the thread
-        print(f"FATAL ERROR: Failed to start webhook processing thread or parse JSON: {e}")
-        # Always return 200 OK to Telegram to prevent retry floods.
+        logger.exception(f"Failed to offload webhook processing: {e}")
         return HttpResponse('ok (error before offloading)', status=200)
-
 # parents/views.py
 from django.http import JsonResponse
 from django.views import View

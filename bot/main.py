@@ -485,51 +485,27 @@ async def setup_menu_button():
 # ----------------------
 # 9. Synchronous processing function for threading (Webhook handler)
 # ----------------------
-def process_update_sync(update_data: Dict[str, Any]):
+#----------------------
+
+def process_update_sync(update_data: dict):
     """
     Handles incoming Telegram updates from the webhook.
-    Runs the async PTB handler inside a dedicated loop per thread.
-    
-    CRITICAL FIX: Explicitly sets up Django and initializes the PTB Application
-    by running the necessary async calls inside the thread's new event loop.
+    Uses asyncio.run() to safely execute the async bot processing.
     """
+    import asyncio
+    from telegram import Update
+
     try:
-        # 1. CRITICAL: Ensure Django ORM is ready in this new thread's context
-        if not django.apps.apps.ready:
-            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
-            django.setup()
-            logger.debug("Django setup executed in webhook thread.")
-             
-        # 2. Convert JSON to Telegram Update object
         update = Update.de_json(update_data, app.bot)
-        
-        # 3. Define the asynchronous sequence of operations
-        async def run_update_sequence():
-            """
-            This sequence runs the necessary initialization and then processes the update.
-            """
-            if not app.running:
-                # CRITICAL FIX: Await the initialization call
-                await app.initialize()
-                
-            await app.process_update(update)
-        
-        # 4. Each thread gets its own event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # 5. Run the asynchronous task sequence synchronously
-        loop.run_until_complete(run_update_sequence())
-        
-        # 6. Clean up the loop - The explicit loop.close() has been removed.
-        # This prevents the "RuntimeError: Event loop is closed" race condition 
-        # where underlying network resources attempt cleanup after the loop is shut down.
-        logger.debug("Async event loop finished for update.") 
+
+        # Run async processing safely
+        asyncio.run(app.process_update(update))
 
     except Exception as e:
-        logger.error(f"❌ Error in webhook thread: {e}", exc_info=True)
+        import logging
+        logger = logging.getLogger("SchoolBot")
+        logger.exception(f"Error processing Telegram update: {e}")
 
-# ----------------------
 # 10. Webhook setup function (Correct for PythonAnywhere)
 # ----------------------
 async def setup_webhook():
