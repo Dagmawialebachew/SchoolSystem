@@ -791,7 +791,6 @@ from bot.main import process_update_sync # Import the function
 
 logger = logging.getLogger(__name__)  # <-- CRITICAL: Define logger here
 
-
 @csrf_exempt
 def telegram_webhook(request):
     """
@@ -806,22 +805,19 @@ def telegram_webhook(request):
         # Decode incoming JSON update
         update_data = json.loads(request.body.decode('utf-8'))
 
-        # Offload processing to a thread-safe executor
-        import concurrent.futures
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-        executor.submit(process_update_sync, update_data)
+        # Offload processing to a separate thread to avoid blocking
+        threading.Thread(target=process_update_sync, args=(update_data,), daemon=True).start()
 
-        logger.info("Webhook received and offloaded successfully.")
+        logger.info("✅ Webhook received and offloaded successfully.")
         return HttpResponse('ok', status=200)
 
     except json.JSONDecodeError:
-        logger.error("Received invalid JSON in webhook request.")
+        logger.error("⚠️ Received invalid JSON in webhook request.")
         return HttpResponse('Invalid JSON', status=400)
 
     except Exception as e:
-        logger.exception(f"Failed to offload webhook processing: {e}")
+        logger.exception(f"❌ Failed to offload webhook processing: {e}")
         return HttpResponse('ok (error before offloading)', status=200)
-# parents/views.py
 from django.http import JsonResponse
 from django.views import View
 from fees.models import Invoice
