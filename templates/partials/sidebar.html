@@ -5,6 +5,7 @@
   <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 hidden z-40 md:hidden"></div>
 
   <!-- Sidebar -->
+   {% if not user.is_parent %}
   <aside id="sidebar"
     class="fixed inset-y-0 left-0 w-64 min-h-screen bg-white border-r border-neutral-200 shadow-md transform -translate-x-full transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:static md:inset-0">
     
@@ -117,6 +118,82 @@
       </ul>
     </nav>
   </aside>
+  {% endif %}
+{% if user.is_parent %}
+  <!-- Parent Sidebar -->
+<aside id="parent-sidebar"
+  class="fixed inset-y-0 left-0 w-64 min-h-screen bg-white border-r border-neutral-200 shadow-md transform -translate-x-full transition-transform duration-300 ease-in-out z-50 md:translate-x-0 md:static md:inset-0">
+
+  <!-- Logo / Brand -->
+  <div class="h-16 flex items-center px-6 border-b border-neutral-200">
+    <span class="text-xl font-montserrat font-bold text-primary-600">Parent Portal</span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="mt-4 px-2">
+    <ul class="space-y-1">
+
+      <!-- Home -->
+      <li>
+        <a href="{% url 'parents:dashboard' %}"
+           class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700
+                  {% if request.resolver_match.url_name == 'dashboard' %}bg-primary-100 text-primary-700{% endif %}">
+          <i class="fas fa-home w-5 mr-3 text-primary-500"></i>
+          Home
+        </a>
+      </li>
+
+      <!-- Kids -->
+      <li>
+        <a href="{% url 'parents:kids' %}#children"
+           class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700
+                  {% if request.resolver_match.url_name == 'kids' %}bg-primary-100 text-primary-700{% endif %}">
+          <i class="fas fa-child w-5 mr-3 text-primary-500"></i>
+          Kids
+        </a>
+      </li>
+
+      <!-- Fees -->
+      <li>
+        <a href="{% url 'parents:fees' %}"
+           class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700
+                  {% if request.resolver_match.url_name == 'fees' %}bg-primary-100 text-primary-700{% endif %}">
+          <i class="fas fa-wallet w-5 mr-3 text-primary-500"></i>
+          Fees
+        </a>
+      </li>
+
+      <!-- Notifications -->
+      <li>
+        <a href="{% url 'notifications:list' %}"
+           class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700
+                  {% if request.resolver_match.url_name == 'notifications:list' %}bg-primary-100 text-primary-700{% endif %}">
+          <div class="relative mr-3">
+            <i class="fas fa-bell w-5 text-primary-500"></i>
+            {% if unread_announcements_count %}
+              <span class="absolute -top-2 -right-2 inline-flex items-center justify-center h-4 w-4 rounded-full bg-red-600 text-white text-xs">
+                {{ unread_announcements_count }}
+              </span>
+            {% endif %}
+          </div>
+          Notifications
+        </a>
+      </li>
+
+      <!-- Profile -->
+      <li>
+        <a href="{% url 'parents:profile' %}"
+           class="flex items-center px-4 py-2 text-sm font-medium rounded-lg text-neutral-700 hover:bg-primary-50 hover:text-primary-700
+                  {% if request.resolver_match.url_name == 'profile' %}bg-primary-100 text-primary-700{% endif %}">
+          <i class="fas fa-user-circle w-5 mr-3 text-primary-500"></i>
+          Profile
+        </a>
+      </li>
+
+    </ul>
+  </nav>
+</aside>
+{% endif %}
 
   <!-- Mobile Bottom Nav -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 shadow-inner md:hidden z-50">

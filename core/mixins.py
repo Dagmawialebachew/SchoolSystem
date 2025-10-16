@@ -78,3 +78,4 @@ class UserScopedMixin:
             if not form.instance.school and not self.request.user.is_super_admin():
                 form.instance.school = self.get_school()
         return super().form_valid(form)
+

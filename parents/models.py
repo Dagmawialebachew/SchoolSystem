@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from students.models import Student # Assuming you have a Student model in a students app
 
 class ParentProfile(models.Model):
     user = models.OneToOneField(

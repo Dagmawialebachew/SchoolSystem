@@ -30,5 +30,10 @@ urlpatterns = [
     path("api/save_chat_id/", api.save_chat_id, name="save_chat_id"),
     path("api/disconnect_chat_id/", api.disconnect_chat_id, name="disconnect_chat_id"),
 path('telegram-webhook/', views.telegram_webhook, name='telegram_webhook'),
+    path("api/parent/<int:student_id>/unpaid-invoices/", views.StudentUnpaidInvoicesView.as_view(), name="student-unpaid-invoices"),
+    path("api/parent/<int:parent_id>/fee-summary/", views.ParentFeeSummaryView.as_view(), name="parent_fee_summary"),
+    path("api/parent/students/<int:student_id>/fee-summary/", views.StudentFeeSummaryView.as_view(), name="student_fee_summary"),
+
+
 
 ]

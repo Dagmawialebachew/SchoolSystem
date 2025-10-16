@@ -1,6 +1,6 @@
 <div class="space-y-3 sm:space-y-4">
   {% for a in announcements %}
-    <article class="bg-white rounded-xl shadow-sm p-3 sm:p-5 border border-neutral-200" data-announcement-id="{{ a.id }}">
+<article class="bg-white rounded-xl shadow-sm p-3 sm:p-5 border border-neutral-200 {% if not a.is_read %}ring-2 ring-emerald-300{% endif %}" data-announcement-id="{{ a.id }}">
       <header class="flex items-start justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           {% if a.priority == 'URGENT' %}
@@ -25,7 +25,7 @@
 
           {% if not a.is_read %}
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <i class="fas fa-sparkles"></i> New
+              <i class="fas fa-bolt"></i> New
             </span>
           {% endif %}
 
@@ -226,3 +226,4 @@
     </div>
   {% endfor %}
 </div>
+

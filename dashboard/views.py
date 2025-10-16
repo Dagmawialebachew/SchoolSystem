@@ -124,12 +124,11 @@ def dashboard(request):
     elif request.user.is_teacher():
         return TeacherDashboardView.as_view()(request)
     elif request.user.is_parent():
+        print('the user is parent i mean ', request.user.role)
         return reverse_lazy('parents:dashboard')
     elif request.user.role == "SUPER_ADMIN":
         return AdminDashboardView.as_view()(request)
-    else:
-        return render(request, 'dashboard/dashboard.html', {"user": request.user})
-
+    
 
 # ------------------ API Endpoints ------------------ #
 

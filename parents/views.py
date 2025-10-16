@@ -816,3 +816,147 @@ def telegram_webhook(request):
         # If the JSON parsing fails, we still return 200 to prevent retry storms
         print(f"❌ Webhook parsing/threading error: {e}")
         return HttpResponse('ok', status=200)
+    
+    
+    
+
+
+# parents/views.py
+from django.http import JsonResponse
+from django.views import View
+from fees.models import Invoice
+from parents.models import ParentProfile
+
+class ParentFeeSummaryView(View):
+    def get(self, request, parent_id):
+        # Filter invoices of all children belonging to this parent
+        print('parent fees summary is called and we find the parent_id', parent_id)
+        invoices = (
+            Invoice.objects
+            .filter(
+                student__parents__id=parent_id,
+                status__in=["UNPAID", "PARTIAL", "OPENING_BALANCE"]
+            )
+            .select_related("student")
+            .order_by("due_date")
+        )
+
+        grouped = {}
+
+        for inv in invoices:
+            student_name = inv.student.full_name
+            if student_name not in grouped:
+                grouped[student_name] = {
+                    "student_id": inv.student.id,
+                    "student_name": student_name,
+                    "count": 0,
+                    "total": 0,
+                    "nearest_due": None,
+                }
+
+            grouped[student_name]["count"] += 1
+
+            # Compute outstanding balance
+            balance = getattr(
+                inv,
+                "balance",
+                getattr(inv, "amount_due", 0) - getattr(inv, "amount_paid", 0)
+            )
+            grouped[student_name]["total"] += balance
+
+            due = inv.due_date
+            if not grouped[student_name]["nearest_due"] or (due and due < grouped[student_name]["nearest_due"]):
+                grouped[student_name]["nearest_due"] = due
+
+        return JsonResponse(list(grouped.values()), safe=False)
+
+class StudentFeeSummaryView(View):
+    """
+    New view required for the Telegram bot's "Back" button.
+    It summarizes unpaid fees for a SINGLE student ID.
+    Returns a single student summary dictionary.
+    """
+    def get(self, request, student_id):
+        # 1. Filter invoices only for the specific student ID
+        invoices = (
+            Invoice.objects
+            .filter(
+                student__id=student_id, # Filter directly by student ID
+                status__in=["UNPAID", "PARTIAL", "OPENING_BALANCE"]
+            )
+            .select_related("student")
+            .order_by("due_date")
+        )
+
+        # If no unpaid invoices exist, return an empty JSON object
+        if not invoices.exists():
+            return JsonResponse({}, safe=False)
+
+        # 2. Initialize and process summary for the single student
+        inv_student = invoices.first().student
+        student_summary = {
+            "student_id": inv_student.id,
+            "student_name": inv_student.full_name,
+            "count": 0,
+            "total": Decimal(0),
+            "nearest_due": None,
+        }
+
+        for inv in invoices:
+            student_summary["count"] += 1
+
+            # Compute outstanding balance (using the existing logic)
+            balance = getattr(
+                inv,
+                "balance",
+                getattr(inv, "amount_due", 0) - getattr(inv, "amount_paid", 0)
+            )
+            student_summary["total"] += Decimal(balance)
+
+            due = inv.due_date
+            # Find the nearest due date
+            if not student_summary["nearest_due"] or (due and due < student_summary["nearest_due"]):
+                student_summary["nearest_due"] = due
+
+        # 3. Final serialization for JSON response
+        response_data = {
+            "student_id": student_summary["student_id"],
+            "student_name": student_summary["student_name"],
+            "count": student_summary["count"],
+            "total": f"{student_summary['total']:.2f}",
+            "nearest_due": student_summary["nearest_due"].isoformat() if student_summary["nearest_due"] else None,
+        }
+        
+        # Return the single dictionary object as expected by the Telegram bot's "Back" handler
+        return JsonResponse(response_data, safe=False)
+    
+class StudentUnpaidInvoicesView(View):
+    """
+    Returns unpaid/partial invoices for a specific student as JSON,
+    so the bot can fetch them.
+    """
+    def get(self, request, student_id):
+        # 1. Make sure student exists
+        student = get_object_or_404(Student, id=student_id)
+
+        # 2. Get unpaid or partial invoices for this student
+        invoices = Invoice.objects.filter(
+            student=student,
+            status__in=["UNPAID", "PARTIAL", "OPENING_BALANCE"]
+        ).select_related("student", "fee").order_by("due_date")
+
+        data = []
+        for inv in invoices:
+            data.append({
+                "invoice_id": inv.id,
+                "student_id": inv.student.id,
+                "student_name": inv.student.full_name,
+                "description": getattr(inv, "description", inv.fee.name if inv.fee else "N/A"),
+                "amount_due": float(getattr(inv, "amount_due", 0)),
+                "amount_paid": float(getattr(inv, "amount_paid", 0)),
+                "balance": float(getattr(inv, "balance", getattr(inv, "amount_due", 0) - getattr(inv, "amount_paid", 0))),
+                "due_date": inv.due_date.strftime("%Y-%m-%d") if inv.due_date else None,
+                "status": inv.status,
+            })
+
+        return JsonResponse(data, safe=False)

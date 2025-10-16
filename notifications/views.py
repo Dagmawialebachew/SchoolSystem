@@ -7,7 +7,7 @@ from core.mixins import RoleRequiredMixin, UserScopedMixin
 from .models import Announcement, AnnouncementAttachment
 from .forms import AnnouncementForm
 from django.utils.dateparse import parse_date
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField, Count
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.template.loader import render_to_string
@@ -57,27 +57,42 @@ class AnnouncementListView(RoleRequiredMixin, UserScopedMixin, ListView):
     template_name = 'notifications/list.html'
     context_object_name = 'announcements'
     allowed_roles = ['TEACHER', 'PARENT', 'SCHOOL_ADMIN']
-    paginate_by = 10  # 👈 15 per page
-    
+    paginate_by = 10  # announcements per page
 
     def get_queryset(self):
+        # Base queryset: active announcements targeted to user
         qs = super().get_queryset()
         qs = qs.active().targeted_to(self.request.user)
+
+        # Annotate read status
         reads_subquery = AnnouncementRead.objects.filter(
             announcement=OuterRef('pk'),
             user=self.request.user
         )
         qs = qs.annotate(is_read=Exists(reads_subquery))
 
-        # Annotate reactions count
+        # Annotate reactions and read counts
         qs = qs.annotate(
             likes_count=Count('reactions', filter=Q(reactions__reaction='LIKE')),
             loves_count=Count('reactions', filter=Q(reactions__reaction='LOVE')),
             acks_count=Count('reactions', filter=Q(reactions__reaction='ACK')),
             reads_count=Count('reads')
         )
-        qs = qs.order_by('-publish_at')
 
+        # Annotate numeric priority for ordering (pinned > urgent > important > info)
+        qs = qs.annotate(
+            priority_order=Case(
+                When(pinned=True, then=4),           # pinned messages always top
+                When(priority='URGENT', then=3),
+                When(priority='IMPORTANT', then=2),
+                When(priority='INFO', then=1),
+                default=0,
+                output_field=IntegerField()
+            )
+        )
+
+        # Ordering: pinned -> unread -> priority -> newest
+        qs = qs.order_by('-priority_order', '-is_read', '-publish_at')
 
         # Filters
         priority = self.request.GET.get("priority")
@@ -87,30 +102,28 @@ class AnnouncementListView(RoleRequiredMixin, UserScopedMixin, ListView):
         search   = self.request.GET.get("search")
         category = self.request.GET.get("category")
 
+        filters = Q()
         if priority:
-            qs = qs.filter(priority=priority)
-            for q in qs:
-                print(q)
+            filters &= Q(priority=priority)
         if channel:
-            qs = qs.filter(delivery_channels__icontains=channel)
+            filters &= Q(delivery_channels__icontains=channel)
         if start:
             d = parse_date(start)
-            if d: qs = qs.filter(publish_at__date__gte=d)
+            if d:
+                filters &= Q(publish_at__date__gte=d)
         if end:
             d = parse_date(end)
-            if d: qs = qs.filter(publish_at__date__lte=d)
+            if d:
+                filters &= Q(publish_at__date__lte=d)
         if search:
-            qs = qs.filter(Q(title__icontains=search) | Q(message__icontains=search))
+            filters &= Q(title__icontains=search) | Q(message__icontains=search)
         if category:
-            qs = qs.filter(category=category)
-            if qs:
-                for q in qs:
-                    print('this is q', q)
-            else:
-                print('there is not filter')
+            filters &= Q(category=category)
+
+        if filters:
+            qs = qs.filter(filters)
 
         return qs
-
 class AnnouncementUpdateView(LoginRequiredMixin, UpdateView):
     model = Announcement
     form_class = AnnouncementForm

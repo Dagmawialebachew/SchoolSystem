@@ -687,12 +687,20 @@ video {
   right: -0.25rem;
 }
 
+.-right-2 {
+  right: -0.5rem;
+}
+
 .-right-8 {
   right: -2rem;
 }
 
 .-top-1 {
   top: -0.25rem;
+}
+
+.-top-2 {
+  top: -0.5rem;
 }
 
 .bottom-0 {
@@ -3249,6 +3257,11 @@ video {
   --tw-ring-color: rgb(219 234 254 / var(--tw-ring-opacity, 1));
 }
 
+.ring-emerald-300 {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(110 231 183 / var(--tw-ring-opacity, 1));
+}
+
 .ring-green-100 {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(220 252 231 / var(--tw-ring-opacity, 1));
@@ -3528,6 +3541,10 @@ video {
   f: l;
 }
 
+.\[f_start_pos\:f_end_pos\] {
+  f_start_pos: f end pos;
+}
+
 .\[firstbracket\:firstbracket\+20\] {
   firstbracket: firstbracket+20;
 }
@@ -3578,6 +3595,10 @@ video {
 
 .\[i\:j\] {
   i: j;
+}
+
+.\[i\:pos\] {
+  i: pos;
 }
 
 .\[index-2\:index\] {
@@ -3702,6 +3723,10 @@ video {
 
 .\[pastfirstbracket\:closebracket\] {
   pastfirstbracket: closebracket;
+}
+
+.\[pos\:-1\] {
+  pos: -1;
 }
 
 .\[pos\:end_pos\] {
@@ -3838,6 +3863,10 @@ video {
 
 .\[start_idx\:end_idx\] {
   start_idx: end idx;
+}
+
+.\[start_pos\:data_len\] {
+  start_pos: data len;
 }
 
 .\[start_pos\:pos\] {

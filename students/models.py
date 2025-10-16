@@ -6,6 +6,8 @@ from dateutil.relativedelta import relativedelta
 from accounts.models import User
 from django.core.validators import RegexValidator
 
+from parents.models import ParentProfile
+
 
 ethiopian_phone_validator = RegexValidator(
     regex=r"^09\d{8}$",
@@ -92,22 +94,20 @@ class Student(SchoolOwnedModel):
     def calculate_next_payment_date(self, from_date=None):
         """
         Calculate next_payment_date based on billing cycle or custom months.
+        Always anchored to starting_billing_month if set, otherwise next_payment_date or today.
         """
-        months = 1
-        if self.billing_cycle == "MONTHLY":
-            months = 1
-        elif self.billing_cycle == "QUARTERLY":
-            months = 3
-        elif self.billing_cycle == "HALF_YEARLY":
-            months = 6
-        elif self.billing_cycle == "YEARLY":
-            months = 12
-        elif self.billing_cycle == "CUSTOM":
-            if not self.custom_months:
-                raise ValueError("Custom months must be set when billing cycle is CUSTOM.")
-            months = self.custom_months
+        if self.billing_cycle == "CUSTOM" and not self.custom_months:
+            raise ValueError("Custom months must be set when billing cycle is CUSTOM.")
 
-        base_date = from_date or self.next_payment_date or date.today()
+        months = {
+            "MONTHLY": 1,
+            "QUARTERLY": 3,
+            "HALF_YEARLY": 6,
+            "YEARLY": 12,
+            "CUSTOM": self.custom_months or 1,
+        }[self.billing_cycle]
+
+        base_date = from_date or self.next_payment_date or self.starting_billing_month or date.today()
         return base_date + relativedelta(months=months)
 
     def save(self, *args, **kwargs):
@@ -123,6 +123,10 @@ class Student(SchoolOwnedModel):
                 # Start billing from today instead of skipping a cycle
                 self.next_payment_date = date.today()
         super().save(*args, **kwargs)
+        
+    
+
+    
 
 class AuditLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
