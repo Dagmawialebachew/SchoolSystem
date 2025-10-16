@@ -533,22 +533,31 @@ def process_update_sync(update_data: Dict[str, Any]):
 # 10. Webhook setup function (Correct for PythonAnywhere)
 # ----------------------
 async def setup_webhook():
-    """Sets the webhook and persistent menu button."""
-    # Correct domain for PythonAnywhere deployment
-    DOMAIN = "schoolsys.pythonanywhere.com"
-    # This must match your Django URL pattern for the webhook
-    WEBHOOK_PATH = "/parents/telegram-webhook/" 
-    WEBHOOK_URL = f"https://{DOMAIN}{WEBHOOK_PATH}" 
-
-    bot = app.bot
-    # Always delete the old webhook before setting a new one
-    await bot.delete_webhook() 
-    await bot.set_webhook(url=WEBHOOK_URL)
-    logger.info(f"✅ Webhook set successfully to: {WEBHOOK_URL}")
+    """Sets up the Telegram webhook and persistent menu button safely on PythonAnywhere."""
     
-    # CRITICAL: Set the persistent menu button here
-    await setup_menu_button()
+    # --- PythonAnywhere domain & webhook path ---
+    DOMAIN = "schoolsys.pythonanywhere.com"
+    WEBHOOK_PATH = "/parents/telegram-webhook/"
+    WEBHOOK_URL = f"https://{DOMAIN}{WEBHOOK_PATH}"
 
+    # --- Initialize bot properly ---
+    await app.initialize()
+    bot = app.bot
+
+    # --- Delete old webhook ---
+    await bot.delete_webhook()
+    logger.info("Old webhook deleted.")
+
+    # --- Set new webhook ---
+    await bot.set_webhook(url=WEBHOOK_URL)
+    logger.info(f"✅ Webhook set successfully: {WEBHOOK_URL}")
+
+    # --- Set persistent menu button with HTTPS ---
+    try:
+        await setup_menu_button()
+        logger.info("✅ Persistent menu button set successfully.")
+    except Exception as e:
+        logger.error(f"❌ Failed to set menu button: {e}")
 
 # ----------------------
 # 11. Local polling entry point
