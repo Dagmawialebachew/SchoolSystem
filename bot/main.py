@@ -1,11 +1,20 @@
-from asgiref.sync import async_to_sync, sync_to_async # ADDED sync_to_async
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from asgiref.sync import async_to_sync, sync_to_async 
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, MenuButton, WebAppInfo # ADDED MenuButtonWebApp, MenuButton, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 from telegram.constants import ParseMode, ChatAction
 import asyncio
 import aiohttp
 import logging
 import re
+
+import os
+import django
+
+# Point to your Django settings module
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
+
+# Setup Django
+django.setup()
 
 # IMPORTANT: These imports must be configured in your bot/config.py
 from bot.config import (
@@ -121,21 +130,23 @@ def _generate_student_summary(s: dict) -> tuple[str, InlineKeyboardMarkup]:
 
     # --- Build the message ---
     message = (
-        f"📚 *{student_name}*\n"
-        f"💵 *Unpaid Invoices:* {s.get('count', 0)}\n"
-        f"💰 *Total Unpaid:* {formatted_unpaid} ETB\n"
-        f"✅ *Total Paid:* {formatted_paid} ETB\n"
+        f"📚 *{student_name}*\n\n"
+        f"💵 *Unpaid Invoices:* {s.get('count', 0)}\n\n"
+        f"💰 *Total Unpaid:* {formatted_unpaid} ETB\n\n"
+        f"✅ *Total Paid:* {formatted_paid} ETB\n\n"
         f"📅 *Nearest Due:* {nearest_due}"
     )
 
     # --- Inline buttons (Using WEB_APP_BASE_URL) ---
     buttons = [
-        [
-            InlineKeyboardButton("🔍 View Invoices", callback_data=f"view_invoices_{student_id}"),
-            InlineKeyboardButton("📑 Details", url=f"{WEB_APP_BASE_URL}/parents/kids/{student_id}"),
-            InlineKeyboardButton("💳 Pay", url=f"{WEB_APP_BASE_URL}/parents/fees/child/{student_id}"),
-        ]
+    [
+        InlineKeyboardButton("🔍 View Invoices", callback_data=f"view_invoices_{student_id}"),
+        InlineKeyboardButton("📑 Details", url=f"{WEB_APP_BASE_URL}/parents/kids/{student_id}"),
+    ],
+    [
+        InlineKeyboardButton("💳 Pay", url=f"{WEB_APP_BASE_URL}/parents/fees/child/{student_id}"),
     ]
+]
 
     return message, InlineKeyboardMarkup(buttons)
 # ----------------------
@@ -372,12 +383,15 @@ async def handle_view_invoices(update: Update, context: ContextTypes.DEFAULT_TYP
     
     # --- NAVIGATION BUTTONS (Using WEB_APP_BASE_URL) ---
     buttons = [
-        [
-            InlineKeyboardButton("⬅️ Back", callback_data=f"back_to_student_{student_id}"),
-            InlineKeyboardButton("📑 Details", url=f"{WEB_APP_BASE_URL}/parents/kids/{student_id}"),
-            InlineKeyboardButton("💳 Pay", url=f"{WEB_APP_BASE_URL}/parents/fees/child/{student_id}"),
-        ]
+    [
+        InlineKeyboardButton("⬅️ Back", callback_data=f"back_to_student_{student_id}"),
+        InlineKeyboardButton("📑 Details", url=f"{WEB_APP_BASE_URL}/parents/kids/{student_id}"),
+    ],
+    [
+        InlineKeyboardButton("💳 Pay", url=f"{WEB_APP_BASE_URL}/parents/fees/child/{student_id}"),
     ]
+]
+
 
     await query.edit_message_text(
         text,
@@ -393,18 +407,46 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("fees", fees)) 
 app.add_handler(CallbackQueryHandler(handle_view_invoices, pattern=r"^view_invoices_(\d+)$")) 
 app.add_handler(CallbackQueryHandler(handle_back_to_fees, pattern=r"^back_to_student_(\d+)$"))
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Welcome\\! Here’s what you can do:\\n\\n"
-        "• /start \\- Connect or disconnect your account using the link from your profile\\.\\n"
-        "• /fees \\- View unpaid fees for your children \\(only after connecting\\)\\.\\n"
-        "• Click 'Pay' to go to payment\\n"
-        "• Click 'View Invoices' to see detailed invoices\\n",
-        parse_mode=ParseMode.MARKDOWN_V2
-    )
+    "👋 Welcome\\!\n\n"
+    "• /start \\- Connect or disconnect your account using the link from your profile\\.\n\n"
+    "• /fees \\- View unpaid fees for your children \\(only after connecting\\)\\.\n\n"
+    "• Click *Pay* to go to payment\n\n"
+    "• Click *View Invoices* to see detailed invoices\n",
+    parse_mode=ParseMode.MARKDOWN_V2,
+)
+
 
 app.add_handler(CommandHandler("help", help_command))
+
+# ----------------------
+# Menu Button Setup (NEW FEATURE)
+# ----------------------
+# bot/main.py
+
+# ... (rest of the code)
+
+# ----------------------
+# Menu Button Setup (CORRECTED)
+# ----------------------
+async def setup_menu_button():
+    """Sets the persistent 'Open School App' button."""
+    try:
+        # The URL for the Web App button. This points to your main dashboard.
+        app_url = f"{WEB_APP_BASE_URL}/parents/dashboard/"
+        
+        # 1. CRITICAL: Create the WebAppInfo object first
+        web_app_info = WebAppInfo(url=app_url)
+        
+        # 2. Define the MenuButtonWebApp using the WebAppInfo object
+        menu_button = MenuButtonWebApp(text="Open School App", web_app=web_app_info) # Use web_app_info here
+        
+        # Set the menu button for all users.
+        await app.bot.set_chat_menu_button(menu_button=menu_button)
+        logger.info(f"✅ Menu button set successfully to: {app_url}")
+    except Exception as e:
+        logger.error(f"❌ Failed to set menu button: {e}")
 
 # ----------------------
 # Synchronous processing function for threading (Webhook handler)
@@ -451,7 +493,10 @@ async def setup_webhook():
     # Always delete the old webhook before setting a new one
     await bot.delete_webhook() 
     await bot.set_webhook(url=WEBHOOK_URL)
-    print(f"✅ Webhook set successfully to: {WEBHOOK_URL}")
+    logger.info(f"✅ Webhook set successfully to: {WEBHOOK_URL}")
+    
+    # CRITICAL: Set the persistent menu button here
+    await setup_menu_button()
 
 
 # ----------------------

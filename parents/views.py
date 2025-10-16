@@ -796,28 +796,44 @@ import json
 import threading
 from bot.main import process_update_sync # Import the new function
 
+import json
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
+# Make sure you import the synchronous handler from your bot's main file
+from bot.main import process_update_sync 
+
 @csrf_exempt
+@require_POST
 def telegram_webhook(request):
-    if request.method != 'POST':
-        return HttpResponse('Method Not Allowed', status=405)
+    """
+    Handles incoming updates from the Telegram webhook.
     
-    try:
-        # 1. Capture the raw update data
-        update_data = json.loads(request.body.decode('utf-8'))
+    NOTE: We execute 'process_update_sync' directly, avoiding Python's 'threading.Thread' 
+    which can be unreliable in the PythonAnywhere web worker environment.
+    """
+    if request.method == "POST":
+        try:
+            update_data = json.loads(request.body.decode('utf-8'))
+            
+            # This executes the bot's logic (which runs its own async loop inside)
+            process_update_sync(update_data)
+            
+            # Telegram requires a 200 OK response quickly.
+            # Returning 'ok' ensures Telegram doesn't retry the message.
+            return JsonResponse({'status': 'ok'})
         
-        # 2. Start a new thread to handle the slow API call and reply
-        thread = threading.Thread(target=process_update_sync, args=(update_data,))
-        thread.start()
-
-        # 3. CRITICAL: IMMEDIATELY return 200 OK to Telegram!
-        return HttpResponse('ok', status=200) 
-
-    except Exception as e:
-        # If the JSON parsing fails, we still return 200 to prevent retry storms
-        print(f"❌ Webhook parsing/threading error: {e}")
-        return HttpResponse('ok', status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'invalid json'}, status=400)
+        except Exception as e:
+            # Log the error (it will appear in your PythonAnywhere server log)
+            print(f"Error processing Telegram update: {e}")
+            # It's safest to return 'ok' (200) even on internal errors to prevent retry storms
+            return JsonResponse({'status': 'ok'}) 
     
-    
+    # Should only accept POST requests
+    return HttpResponse(status=405) 
     
 
 
