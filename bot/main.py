@@ -510,8 +510,10 @@ def process_update_sync(update_data: Dict[str, Any]):
         # 5. Run the asynchronous task sequence synchronously
         loop.run_until_complete(run_update_sequence())
         
-        # 6. Clean up the loop
-        loop.close()
+        # 6. Clean up the loop - The explicit loop.close() has been removed.
+        # This prevents the "RuntimeError: Event loop is closed" race condition 
+        # where underlying network resources attempt cleanup after the loop is shut down.
+        logger.debug("Async event loop finished for update.") 
 
     except Exception as e:
         logger.error(f"❌ Error in webhook thread: {e}", exc_info=True)
