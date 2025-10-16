@@ -8,7 +8,6 @@ from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.views import View
 
-from bot.main import run_async
 from .forms import CombinedParentProfileForm
 from django.views.generic import TemplateView, DetailView, ListView, UpdateView, FormView
 from django.shortcuts import get_object_or_404, redirect
@@ -782,22 +781,13 @@ class ProviderRedirectView(View):
 
 #Running the bot automatically
 
-from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
-from telegram import Update
-import json
-from bot.main import app, run_async
-
-
 import json
 import threading
 import logging # <-- CRITICAL: Must import or define logger here
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from bot.main import process_update_sync # Import the function
-
-# Set up logging for this specific file/view
-logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def telegram_webhook(request):
@@ -808,7 +798,7 @@ def telegram_webhook(request):
     """
     # 1. Immediate Method Check
     if request.method != 'POST':
-        logger.warning(f"Received non-POST request: {request.method}")
+        print(f"WARNING: Received non-POST request: {request.method}")
         return HttpResponse('Method Not Allowed', status=405)
     
     # 2. Extract Data Safely and Respond Instantly
@@ -817,24 +807,25 @@ def telegram_webhook(request):
         update_data = json.loads(request.body.decode('utf-8'))
         
         # OFF-LOAD: Start a new thread to handle the long-running async bot processing.
-        # This thread immediately calls process_update_sync(update_data).
-        threading.Thread(target=process_update_sync, args=(update_data,)).start()
+        # We start the thread with the data, relying on process_update_sync to
+        # handle Django's setup within the new thread context.
+        thread = threading.Thread(target=process_update_sync, args=(update_data,))
+        thread.daemon = True # Allows the main process to exit even if the thread is running
+        thread.start()
         
         # CRITICAL: Return success (200 OK) immediately to Telegram.
-        # This prevents Telegram from marking the webhook as failed or retrying.
+        print("INFO: Webhook received, offloaded to thread, returning 200 OK.")
         return HttpResponse('ok', status=200)
 
     except json.JSONDecodeError:
-        logger.error("❌ Webhook received non-JSON or invalid JSON data.")
+        print("ERROR: Webhook received non-JSON or invalid JSON data.")
         return HttpResponse('Invalid JSON', status=400)
 
     except Exception as e:
-        # This catches errors in parsing or starting the thread, NOT bot processing errors
-        logger.error(f"❌ Webhook handling error: {e}")
-        # Still return 200 to prevent Telegram retries, as the issue is on your server.
-        return HttpResponse('ok (error during handling)', status=200)
-
-
+        # This catches errors in parsing or starting the thread
+        print(f"FATAL ERROR: Failed to start webhook processing thread or parse JSON: {e}")
+        # Always return 200 OK to Telegram to prevent retry floods.
+        return HttpResponse('ok (error before offloading)', status=200)
 
 # parents/views.py
 from django.http import JsonResponse

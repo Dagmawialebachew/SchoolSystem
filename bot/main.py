@@ -1,6 +1,6 @@
 import threading
 from asgiref.sync import async_to_sync, sync_to_async 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, MenuButton, WebAppInfo # ADDED MenuButtonWebApp, MenuButton, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, MenuButton, WebAppInfo 
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 from telegram.constants import ParseMode, ChatAction
 import asyncio
@@ -14,8 +14,9 @@ import django
 # Point to your Django settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
 
-# Setup Django
-django.setup()
+# CRITICAL FIX: Removed top-level django.setup().
+# The setup is now explicitly called within the thread function (process_update_sync) 
+# to ensure thread safety, or relied upon from the main uWSGI process.
 
 # IMPORTANT: These imports must be configured in your bot/config.py
 from bot.config import (
@@ -28,6 +29,15 @@ from bot.config import (
 
 # CRITICAL FIX: Ensure this import is uncommented and the model is accessible
 from parents.models import ParentProfile
+
+# ----------------------
+# Logging setup
+# ----------------------
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # ----------------------
 # Persistence using Async Django ORM
@@ -70,15 +80,6 @@ async def _delete_parent_id_from_persistence(chat_id: int) -> None:
         pass
     except Exception as e:
         logger.error(f"Error deleting parent ID from DB: {e}")
-
-# ----------------------
-# Logging setup
-# ----------------------
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
 
 # ----------------------
 # Utility Functions
@@ -422,14 +423,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app.add_handler(CommandHandler("help", help_command))
 
 # ----------------------
-# Menu Button Setup (NEW FEATURE)
-# ----------------------
-# bot/main.py
-
-# ... (rest of the code)
-
-# ----------------------
-# Menu Button Setup (CORRECTED)
+# Menu Button Setup
 # ----------------------
 async def setup_menu_button():
     """Sets the persistent 'Open School App' button."""
@@ -451,13 +445,21 @@ async def setup_menu_button():
 
 # ----------------------
 # Synchronous processing function for threading (Webhook handler)
-
+# ----------------------
 def process_update_sync(update_data):
     """
     Handles incoming Telegram updates from the webhook.
     Runs the async PTB handler inside a dedicated loop per thread.
+    
+    CRITICAL FIX: Explicitly setting up Django here to prevent
+    AppRegistryNotReady errors when this function runs in a background thread.
     """
     try:
+        # CRITICAL FIX for crashes in background thread
+        if not django.apps.apps.ready:
+             os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
+             django.setup()
+             
         # Convert JSON to Telegram Update object
         update = Update.de_json(update_data, app.bot)
         
@@ -469,13 +471,6 @@ def process_update_sync(update_data):
 
     except Exception as e:
         logger.error(f"❌ Error in webhook thread: {e}")
-
-
-def run_async(update):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(app.process_update(update))
-    loop.close()
 
 
 # ----------------------
@@ -497,61 +492,6 @@ async def setup_webhook():
     # CRITICAL: Set the persistent menu button here
     await setup_menu_button()
 
-
-
-# import asyncio
-# def start_background_bot():
-#     """
-#     Start the PTB bot in a separate daemon thread on PythonAnywhere.
-#     Ensures initialize() and start() are called exactly once.
-#     """
-#     def run():
-#         try:
-#             asyncio.run(run_bot_async())
-#         except Exception as e:
-#             logger.error(f"❌ Background bot thread failed: {e}")
-
-#     thread = threading.Thread(target=run, daemon=True)
-#     thread.start()
-#     logger.info("🟢 Background bot thread started.")
-
-# async def run_bot_async():
-#     """
-#     Async runner for the bot: initialize, start, set webhook and menu button.
-#     """
-#     try:
-#         # Initialize the bot once
-#         await app.initialize()
-
-#         # Only set webhook/menu button if on PythonAnywhere
-#         if os.environ.get("PYTHONANYWHERE_DOMAIN"):
-#             await setup_webhook()
-        
-#         # Start the bot (listens for updates)
-#         await app.start()
-#         logger.info("🚀 Telegram bot fully started and listening for updates.")
-
-#     except Exception as e:
-#         logger.error(f"❌ Failed during bot async startup: {e}")
-
-# # ----------------------
-# # Only start background bot when running on PythonAnywhere
-# # ----------------------
-# if os.environ.get("PYTHONANYWHERE_DOMAIN"):
-#     start_background_bot()
-
-# import asyncio
-
-# async def safe_set_webhook(url):
-#     for attempt in range(5):
-#         try:
-#             await app.bot.set_webhook(url)
-#             return True
-#         except Exception as e:
-#             if "429" in str(e):
-#                 await asyncio.sleep(1 + attempt)  # simple exponential backoff
-#             else:
-#                 raise
 
 # ----------------------
 # Local polling (Unchanged for local testing)
