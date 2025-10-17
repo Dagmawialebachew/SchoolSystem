@@ -5,7 +5,7 @@ TELEGRAM_BOT_TOKEN = "8141768447:AAE-sk9IROgjZWmaJEI5iU4R9rL1QyzrV7k"
 
 # --- INTERNAL API URLs (Bot ↔ Django Communication) ---
 # Use the **public HTTPS** domain for cross-process access.
-BASE_API_URL_INTERNAL = "http://schoolsys.pythonanywhere.com"
+BASE_API_URL_INTERNAL = "https://schoolsys.pythonanywhere.com"
 
 # Define API Endpoints
 DJANGO_API_URL_CONNECT = f"{BASE_API_URL_INTERNAL}/parents/api/save_chat_id/"
