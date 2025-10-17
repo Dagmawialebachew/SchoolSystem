@@ -15,6 +15,6 @@ DJANGO_API_URL_FEE = f"{BASE_API_URL_INTERNAL}/parents/api/parent/"
 
 # --- EXTERNAL WEB APP URL (For Telegram buttons/links) ---
 # This MUST use the public HTTPS domain.
-WEB_APP_BASE_URL = "https://schoolsys.pythonanywhere.com"
+WEB_APP_BASE_URL = "http://127.0.0.1"
 
 logger = logging.getLogger(__name__) 

@@ -22,6 +22,8 @@ import django
 from django.apps import apps 
 from typing import Dict, Any, Tuple, Optional, List, Union
 
+
+
 # --- 1. CRITICAL DJANGO SETUP ---
 if not os.getenv("DJANGO_SETTINGS_MODULE"):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
@@ -96,14 +98,21 @@ async def _delete_parent_id_from_persistence(chat_id: int) -> None:
 # 4. Utility Functions & Robust API Handler
 # ----------------------
 
-def escape_markdown_v2(text) -> str:
+import re
+
+def escape_markdown_v2(text: str) -> str:
     """
-    Escapes special characters in MarkdownV2 to prevent formatting errors.
+    Escapes Telegram MarkdownV2 reserved characters in a given string.
+    Ensures that dynamic/user-supplied text won't break formatting.
     """
     if text is None:
         return "N/A"
+
+    # Convert to string in case non-str types are passed
     text = str(text)
-    return re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+
+    # Escape all special characters defined by Telegram MarkdownV2
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMarkup]:
     """Generates the message and inline keyboard for a single student summary."""
@@ -279,7 +288,9 @@ async def handle_disconnect(update: Update, parent_id: str):
 
     if error_msg:
         safe_error = escape_markdown_v2(error_msg)
-        await update.message.reply_text(f"⚠️ Failed to disconnect. Details: {safe_error}", parse_mode=ParseMode.MARKDOWN_V2)
+        msg = escape_markdown_v2(f"⚠️ Failed to disconnect. Details: {safe_error}")
+        await update.message.reply_text(msg, parse_mode=None)
+
     else:
         # We assume success if no error_msg and no status error from API wrapper
         await update.message.reply_text(
