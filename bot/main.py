@@ -258,31 +258,61 @@ async def handle_connect(update: Update, parent_id: str, chat_id: int):
 async def handle_disconnect(update: Update, parent_id: str):
     """Calls the Django API to disconnect the Telegram chat ID."""
     logger.info(f"Attempting DISCONNECT for parent {parent_id}")
-    await update.effective_chat.send_chat_action(ChatAction.TYPING) 
-    
-    async with aiohttp.ClientSession() as session:
-        try:
-            # API call to Django to remove the chat_id
+
+    # Use either message or callback_query safely
+    message = update.message or (update.callback_query and update.callback_query.message)
+    if not message:
+        logger.warning("No message object available to reply to.")
+        return
+
+    # Send typing action
+    if update.effective_chat:
+        await update.effective_chat.send_chat_action(ChatAction.TYPING)
+
+    try:
+        async with aiohttp.ClientSession() as session:
             async with session.post(
-                DJANGO_API_URL_DISCONNECT, 
-                json={"parent_id": parent_id}
+                DJANGO_API_URL_DISCONNECT,
+                json={"parent_id": parent_id},
+                timeout=10  # set a reasonable timeout
             ) as resp:
-                resp_json = await resp.json(content_type=None)
-                
-                if resp.status == 200 and resp_json.get("success"):
-                    await update.message.reply_text(
+
+                # Attempt to parse JSON, fallback if empty
+                try:
+                    resp_json = await resp.json(content_type=None)
+                except Exception:
+                    resp_json = {}
+
+                if resp.status == 200 and resp_json.get("success", True):
+                    await message.reply_text(
                         "❌ Your Telegram has been disconnected from your school account\\.",
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 else:
-                    error_msg = resp_json.get("error", f"API responded with status {resp.status}")
+                    error_msg = resp_json.get("error") or f"API responded with status {resp.status}"
+                    # Escape markdown safely
                     safe_error = escape_markdown_v2(error_msg)
-                    await update.message.reply_text(f"⚠️ Failed to disconnect\\. Details: {safe_error}")
-        except Exception as e:
-            logger.exception(f"Error disconnecting parent {parent_id}: {e}")
-            await update.message.reply_text("⚠️ Unexpected error during disconnection due to network or server issue\\.")
-            
-            
+                    await message.reply_text(f"⚠️ Failed to disconnect\\. Details: {safe_error}",
+                                             parse_mode=ParseMode.MARKDOWN_V2)
+
+    except aiohttp.ClientConnectorError as e:
+        logger.exception(f"Connection error disconnecting parent {parent_id}: {e}")
+        await message.reply_text(
+            "⚠️ Cannot reach the school server. Please try again later\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except asyncio.TimeoutError:
+        await message.reply_text(
+            "⚠️ Request timed out while disconnecting\\. Please try again\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error disconnecting parent {parent_id}: {e}")
+        await message.reply_text(
+            "⚠️ Unexpected error during disconnection\\. Please try again later\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+           
 async def fees(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends unpaid fee summary for each student (supports both /fees and button click)."""
     # Handle both /fees command and inline button callback
