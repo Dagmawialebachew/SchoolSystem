@@ -1,5 +1,4 @@
 import threading
-from turtle import update
 from asgiref.sync import sync_to_async 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
@@ -15,25 +14,26 @@ import asyncio
 import aiohttp
 import logging
 import re
-import json # Explicitly import json for error handling
 
 import os
 import django
-from django.apps import apps 
-from typing import Dict, Any, Tuple, Optional, List, Union
-
-
+from django.apps import apps # CRITICAL: Import 'apps' to check registry status
+from typing import Dict, Any, Tuple, Optional
 
 # --- 1. CRITICAL DJANGO SETUP ---
+# Set Django settings module environment variable
 if not os.getenv("DJANGO_SETTINGS_MODULE"):
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "SchoolSystem.settings")
 
+# Ensure Django is set up before any model imports for main thread/module scope
 if not apps.ready:
     try:
+        # Calls django.setup() to load the app registry and models
         django.setup()
-        logging.info("DEBUG: Django environment successfully set up.")
+        logging.info("DEBUG: Django environment successfully set up during module import.")
     except Exception as e:
-        logging.error(f"FATAL: Initial Django setup failed at module level: {e}")
+        # This warning is okay, as it will be re-attempted in the webhook thread
+        logging.warning(f"Warning: Initial Django setup failed at module level: {e}")
 
 # IMPORTANT: These imports must be configured in your bot/config.py
 try:
@@ -42,11 +42,15 @@ try:
         TELEGRAM_BOT_TOKEN,
         DJANGO_API_URL_CONNECT,
         DJANGO_API_URL_FEE,
-        WEB_APP_BASE_URL
+        WEB_APP_BASE_URL # Must be set to 'http://schoolsys.pythonanywhere.com'
     )
-    from parents.models import ParentProfile 
-except ImportError as e:
-    raise ImportError(f"Configuration or Model import failed: {e}")
+except ImportError:
+    # Fail loudly if config is missing
+    raise ImportError("Configuration file 'bot/config.py' not found or is missing required variables.")
+
+# CRITICAL FIX: The model import is now safe, as it runs after django.setup() above.
+# We assume 'ParentProfile' is accessible after setup.
+from parents.models import ParentProfile 
 
 # ----------------------
 # 2. Logging setup
@@ -64,7 +68,10 @@ logger = logging.getLogger("SchoolBot")
 async def _get_parent_id_from_persistence(chat_id: int) -> Optional[str]:
     """Look up the parent_id (UUID) from the ParentProfile model using chat_id."""
     try:
+        # Use aget for asynchronous lookup
+        # We need to query on the telegram_chat_id field
         parent = await ParentProfile.objects.aget(telegram_chat_id=str(chat_id))
+        # The return value is the ParentProfile's primary key (usually a UUID)
         return str(parent.id)
     except ParentProfile.DoesNotExist:
         return None
@@ -75,8 +82,10 @@ async def _get_parent_id_from_persistence(chat_id: int) -> Optional[str]:
 async def _set_parent_id_in_persistence(chat_id: int, parent_id: str) -> None:
     """Store the chat_id on the ParentProfile record associated with parent_id."""
     try:
+        # parent_id here should be the ParentProfile.id used to find the record
         parent = await ParentProfile.objects.aget(id=parent_id)
         parent.telegram_chat_id = str(chat_id)
+        # Use sync_to_async for synchronous .save() call
         await sync_to_async(parent.save)()
     except ParentProfile.DoesNotExist:
         logger.warning(f"ParentProfile with ID {parent_id} not found during connection.")
@@ -88,6 +97,7 @@ async def _delete_parent_id_from_persistence(chat_id: int) -> None:
     try:
         parent = await ParentProfile.objects.aget(telegram_chat_id=str(chat_id))
         parent.telegram_chat_id = None
+        # Use sync_to_async for synchronous .save() call
         await sync_to_async(parent.save)()
     except ParentProfile.DoesNotExist:
         pass
@@ -95,31 +105,31 @@ async def _delete_parent_id_from_persistence(chat_id: int) -> None:
         logger.error(f"Error deleting parent ID from DB for chat {chat_id}: {e}")
 
 # ----------------------
-# 4. Utility Functions & Robust API Handler
+# 4. Utility Functions
 # ----------------------
 
 import re
 
-def escape_markdown_v2(text: str) -> str:
+def escape_markdown_v2(text) -> str:
     """
-    Escapes Telegram MarkdownV2 reserved characters in a given string.
-    Ensures that dynamic/user-supplied text won't break formatting.
+    Escapes special characters in MarkdownV2 to prevent formatting errors.
+    Always returns a safe string, even if input is None or not a string.
     """
     if text is None:
         return "N/A"
-
-    # Convert to string in case non-str types are passed
+    # Ensure it's a string (handles numbers, etc.)
     text = str(text)
-
-    # Escape all special characters defined by Telegram MarkdownV2
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+    # Escape all MarkdownV2 special characters
+    return re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMarkup]:
     """Generates the message and inline keyboard for a single student summary."""
     student_id = s.get("student_id", "N/A")
 
+    # Safely escape all API data
     student_name = escape_markdown_v2(str(s.get("student_name", "Student N/A")))
     
+    # Safely handle and format money amounts
     def format_currency(raw_amount):
         try:
             amount = float(raw_amount)
@@ -133,8 +143,10 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
     formatted_unpaid = format_currency(s.get("total_unpaid", s.get("total", 0)))
     formatted_paid = format_currency(s.get("total_paid", 0))
 
+    # --- Nearest due ---
     nearest_due = escape_markdown_v2(str(s.get("nearest_due", "N/A")))
 
+    # --- Build the message ---
     message = (
         f"📚 *{student_name}*\n\n"
         f"💵 *Unpaid Invoices:* {s.get('count', 0)}\n"
@@ -143,6 +155,7 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
         f"📅 *Nearest Due:* {nearest_due}"
     )
 
+    # --- Inline buttons (Using WEB_APP_BASE_URL) ---
     buttons = [
         [
             InlineKeyboardButton("🔍 View Invoices", callback_data=f"view_invoices_{student_id}"),
@@ -155,86 +168,42 @@ def _generate_student_summary(s: Dict[str, Any]) -> Tuple[str, InlineKeyboardMar
 
     return message, InlineKeyboardMarkup(buttons)
 
-async def _call_django_api(
-    method: str, 
-    url: str, 
-    payload: Optional[Dict[str, Any]] = None
-) -> Tuple[Optional[Union[Dict, List]], Optional[str]]:
-    """
-    Handles API calls to Django with robust error checking for connection and JSON parsing.
-
-    Returns: (data, error_message)
-    """
-    async with aiohttp.ClientSession() as session:
-        try:
-            if method.upper() == 'POST':
-                resp = await session.post(url, json=payload, timeout=10)
-            elif method.upper() == 'GET':
-                resp = await session.get(url, timeout=10)
-            else:
-                return None, "Invalid API method specified."
-
-            logger.info(f"API Call: {method} {url} returned status {resp.status}")
-
-            # Check for non-200 status codes (404, 500, etc.)
-            if resp.status != 200:
-                # Read response text for debugging the Django error page
-                error_text = await resp.text()
-                logger.error(f"API Error ({resp.status}) at {url}. Response text: {error_text[:200]}")
-                return None, f"Server responded with status {resp.status}. This usually means the URL is incorrect or the view crashed (check Django logs)."
-
-            # --- Attempt JSON Parsing ---
-            try:
-                data = await resp.json(content_type=None)
-                # Check for explicit error fields in the returned JSON
-                if isinstance(data, dict) and (data.get("error") or not data.get("success", True)):
-                    return None, f"API Error: {data.get('error', 'Operation failed.')}"
-                return data, None
-            except json.JSONDecodeError as e:
-                # CRITICAL FIX: Trap the JSONDecodeError. This happens if Django returns HTML (404/500 page).
-                error_text = await resp.text()
-                logger.error(f"JSONDecodeError at {url}: {e}. Response text: {error_text[:200]}")
-                return None, "The server returned an unexpected format. This usually means the Django view is not mapped correctly."
-
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            # CRITICAL FIX: Trap ConnectionRefusedError or other network blocks.
-            logger.error(f"ClientConnectorError accessing {url}: {e}")
-            return None, "Connection failed. Please ensure your web app is running and the internal API URL is correct (http://127.0.0.1)."
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout accessing {url}")
-            return None, "The school system API timed out. Please try again later."
-        except Exception as e:
-            logger.exception(f"Unhandled Network Error accessing {url}: {e}")
-            return None, "An unexpected network error occurred."
-
 # ----------------------
 # 5. Telegram Bot Handlers
 # ----------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles /start command, including connection and disconnection links."""
     if not update.message:
+        logger.warning("No update.message in /start")
         return
+        
+    logger.info("Bot received /start")
+    logger.info(f"Received /start: {update.message.text} from chat_id {update.effective_chat.id}")
 
+    message_text = update.message.text
     chat_id = update.effective_chat.id
-    message_text = update.message.text or ""
-    parent_id = None
     
+    # Check if there is a parameter (e.g., /start parent_XYZ)
     if len(message_text.split()) > 1:
         param = message_text.split()[1]
 
-        # --- Disconnect ---
+        # --- DISCONNECT LOGIC ---
         if param.startswith("disconnect_parent_"):
             parent_id = param.replace("disconnect_parent_", "")
             context.application.create_task(handle_disconnect(update, parent_id))
+
+            # CRITICAL: Update local persistence AFTER successful API call
             await _delete_parent_id_from_persistence(chat_id)
             return
 
-        # --- Connect ---
+        # --- CONNECT LOGIC ---
         elif param.startswith("parent_"):
             parent_id = param.replace("parent_", "")
-            context.application.create_task(handle_connect(update, parent_id, chat_id))
+            await handle_connect(update, parent_id, chat_id)
+            # CRITICAL: Update local persistence AFTER successful API call
             await _set_parent_id_in_persistence(chat_id, parent_id)
             return
-
+            
     # Default message
     keyboard = [
         [
@@ -252,95 +221,119 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parse_mode=None
 )
 
-
-
 async def handle_connect(update: Update, parent_id: str, chat_id: int):
     """Calls the Django API to connect the Telegram chat ID."""
     logger.info(f"Attempting CONNECT for parent {parent_id} with chat_id {chat_id}")
     await update.effective_chat.send_chat_action(ChatAction.TYPING) 
     
-    url = DJANGO_API_URL_CONNECT
-    payload = {"parent_id": parent_id, "chat_id": str(chat_id)}
+    async with aiohttp.ClientSession() as session:
+        try:
+            # API call to Django to store the chat_id
+            async with session.post(
+                DJANGO_API_URL_CONNECT, 
+                json={"parent_id": parent_id, "chat_id": str(chat_id)}
+            ) as resp:
+                resp_json = await resp.json(content_type=None)
+                if resp.status == 200 and resp_json.get("success"):
+                    keyboard = [
+                        [InlineKeyboardButton("💰 View Fees", callback_data="show_fees")]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    resp_data, error_msg = await _call_django_api('POST', url, payload)
+                    await update.message.reply_text(
+                        "✅ Your Telegram is now connected to your school account\\!\n"
+                        "Tap below to view your current fees 👇",
+                        parse_mode=ParseMode.MARKDOWN_V2,
+                        reply_markup=reply_markup
+                    )
+                else:
+                    error_msg = resp_json.get("error", f"API responded with status {resp.status}")
+                    safe_error = escape_markdown_v2(error_msg)
+                    await update.message.reply_text(f"⚠️ Failed to connect\\. Details: {safe_error}")
+        except Exception as e:
+            logger.exception(f"Error connecting parent {parent_id}: {e}")
+            await update.message.reply_text("⚠️ Unexpected error during connection due to network or server issue\\.")
 
-    if error_msg:
-        safe_error = escape_markdown_v2(error_msg)
-        await update.message.reply_text(f"⚠️ Failed to connect. Details: {safe_error}", parse_mode=ParseMode.MARKDOWN_V2)
-    else:
-        # We assume success if no error_msg and no status error from API wrapper
-        await update.message.reply_text(
-            "✅ Your Telegram is now connected to your school account! "
-            "You can now use commands like /fees. "
-            "Please refresh your browser page to see the updated status.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
 
 async def handle_disconnect(update: Update, parent_id: str):
     """Calls the Django API to disconnect the Telegram chat ID."""
     logger.info(f"Attempting DISCONNECT for parent {parent_id}")
     await update.effective_chat.send_chat_action(ChatAction.TYPING) 
     
-    url = DJANGO_API_URL_DISCONNECT
-    payload = {"parent_id": parent_id}
-
-    resp_data, error_msg = await _call_django_api('POST', url, payload)
-
-    if error_msg:
-        safe_error = escape_markdown_v2(error_msg)
-        msg = escape_markdown_v2(f"⚠️ Failed to disconnect. Details: {safe_error}")
-        await update.message.reply_text(msg, parse_mode=None)
-
-    else:
-        # We assume success if no error_msg and no status error from API wrapper
-        await update.message.reply_text(
-            "❌ Your Telegram has been disconnected from your school account.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
+    async with aiohttp.ClientSession() as session:
+        try:
+            # API call to Django to remove the chat_id
+            async with session.post(
+                DJANGO_API_URL_DISCONNECT, 
+                json={"parent_id": parent_id}
+            ) as resp:
+                resp_json = await resp.json(content_type=None)
+                
+                if resp.status == 200 and resp_json.get("success"):
+                    await update.message.reply_text(
+                        "❌ Your Telegram has been disconnected from your school account\\.",
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
+                else:
+                    error_msg = resp_json.get("error", f"API responded with status {resp.status}")
+                    safe_error = escape_markdown_v2(error_msg)
+                    await update.message.reply_text(f"⚠️ Failed to disconnect\\. Details: {safe_error}")
+        except Exception as e:
+            logger.exception(f"Error disconnecting parent {parent_id}: {e}")
+            await update.message.reply_text("⚠️ Unexpected error during disconnection due to network or server issue\\.")
+            
+            
 async def fees(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends unpaid fee summary for each student."""
-    if not update.message:
+    """Sends unpaid fee summary for each student (supports both /fees and button click)."""
+    # Handle both /fees command and inline button callback
+    message = update.message or (update.callback_query and update.callback_query.message)
+    if not message:
         return
-        
-    chat_id = update.effective_chat.id
-    
-    # --- SECURITY CHECK ---
-    parent_id = await _get_parent_id_from_persistence(chat_id)
 
+    chat = update.effective_chat
+    chat_id = chat.id
+
+    parent_id = await _get_parent_id_from_persistence(chat_id)
     if not parent_id:
-        await update.message.reply_text(
-            "🔒 Access denied. You must connect your account using the **unique link** "
-            "found in your parent profile. Please run /start and follow the instructions.",
+        await message.reply_text(
+            "🔒 Access denied\\. You must connect your account using the **unique link** "
+            "found in your parent profile\\. Please run /start and follow the instructions\\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
         return
-    # --- END SECURITY CHECK ---
-    
-    await update.effective_chat.send_chat_action(ChatAction.TYPING) 
-    
-    # NOTE: Assuming your Django URL pattern is correct to capture parent_id 
-    url = f"{DJANGO_API_URL_FEE}{parent_id}/fee-summary/"
-    data, error_msg = await _call_django_api('GET', url)
 
-    if error_msg:
-        safe_error = escape_markdown_v2(error_msg)
-        await update.message.reply_text(f"⚠️ Error fetching fee summary. Details: {safe_error}", parse_mode=ParseMode.MARKDOWN_V2)
+    await chat.send_action(ChatAction.TYPING)
+
+    try:
+        url = f"{DJANGO_API_URL_FEE}{parent_id}/fee-summary/"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    logger.error(f"API failed with status {resp.status} for parent {parent_id} at {url}")
+                    await message.reply_text("⚠️ Could not fetch fee summary from the school system\\.")
+                    return
+                data = await resp.json(content_type=None)
+    except Exception as e:
+        logger.exception(f"Network error fetching summary for parent {parent_id}: {e}")
+        await message.reply_text("⚠️ Network error fetching fee summary\\. Please try again later\\.")
         return
-    
-    if not data or not isinstance(data, list) or not data:
-        await update.message.reply_text("🎉 All fees are fully paid or no student data found! No action required.", parse_mode=ParseMode.MARKDOWN_V2)
+
+    if not data or (isinstance(data, list) and not data):
+        await message.reply_text(
+            "🎉 All fees are fully paid or no student data found\\! No action required\\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
         return
 
     # Send a message for each student
     for s in data:
-        message, reply_markup = _generate_student_summary(s)
-        await update.message.reply_text(
-            message,
+        msg_text, reply_markup = _generate_student_summary(s)
+        await message.reply_text(
+            msg_text,
             parse_mode=ParseMode.MARKDOWN_V2,
             reply_markup=reply_markup,
         )
-        
+       
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Displays help text."""
     if not update.message:
@@ -363,26 +356,37 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_view_invoices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Fetches and displays detailed unpaid invoices for a specific student."""
     query = update.callback_query
+    # Always answer the query to prevent "Loading" state indefinitely
     await query.answer() 
 
+    # Extract student_id from the pattern match
     student_id = context.match.group(1)
     
+    # Simple check if the user is still connected (using chat_id from the original message)
     chat_id = update.effective_chat.id
     if not await _get_parent_id_from_persistence(chat_id):
-        await query.edit_message_text("⚠️ Access lost. Please run /start and /fees again.", parse_mode=ParseMode.MARKDOWN_V2)
+        await query.edit_message_text("⚠️ Access lost\\. Please run /start and /fees again\\.", parse_mode=ParseMode.MARKDOWN_V2)
         return
     
-    await query.edit_message_text(f"🔍 Fetching invoices for student ID: {student_id}...", parse_mode=ParseMode.MARKDOWN_V2)
+    await query.edit_message_text(f"🔍 Fetching invoices for student ID: {student_id}\\.\\.\\.", parse_mode=ParseMode.MARKDOWN_V2)
     
-    url = f"{DJANGO_API_URL_FEE}students/{student_id}/unpaid-invoices/"
-    invoices, error_msg = await _call_django_api('GET', url)
+    async with aiohttp.ClientSession() as session:
+        try:
+            # Fetch unpaid invoices for the specific student ID
+            url = f"{DJANGO_API_URL_FEE}students/{student_id}/unpaid-invoices/"
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    logger.error(f"API failed with status {resp.status} for student {student_id}")
+                    await query.edit_message_text("⚠️ Could not fetch invoice details\\.")
+                    return
+                invoices = await resp.json(content_type=None)
+        except Exception as e:
+            logger.exception(f"Error fetching invoices for student {student_id}: {e}")
+            await query.edit_message_text("⚠️ Error fetching invoice details\\.")
+            return
 
-    if error_msg:
-        await query.edit_message_text(f"⚠️ Error fetching invoice details. Details: {escape_markdown_v2(error_msg)}", parse_mode=ParseMode.MARKDOWN_V2)
-        return
-
-    if not invoices or not isinstance(invoices, list) or not invoices:
-        text = "🎉 No unpaid invoices for this student! All good."
+    if not invoices or (isinstance(invoices, list) and not invoices):
+        text = "🎉 No unpaid invoices for this student\\! All good\\."
     else:
         text = "*Unpaid Invoices:*\n\n"
         for inv in invoices:
@@ -402,7 +406,8 @@ async def handle_view_invoices(update: Update, context: ContextTypes.DEFAULT_TYP
             balance = escape_markdown_v2(formatted_balance)
             due_date = escape_markdown_v2(inv.get('due_date', 'N/A'))
             
-            text += f"• {invoice_name} - {balance} ETB (Due: {due_date})\n"
+            # Note: Using bullet point and escaped text
+            text += f"• {invoice_name} \\- {balance} ETB \\(Due: {due_date}\\)\n"
 
     # --- NAVIGATION BUTTONS (Student-specific) ---
     buttons = [
@@ -431,16 +436,22 @@ async def handle_back_to_fees(update: Update, context: ContextTypes.DEFAULT_TYPE
     logger.info(f"Returning to student summary for student {student_id}")
     await query.edit_message_text("🔄 Reloading student fee summary...")
     
-    url = f"{DJANGO_API_URL_FEE}students/{student_id}/fee-summary/" 
-    data, error_msg = await _call_django_api('GET', url)
-
-    if error_msg:
-        await query.edit_message_text(f"⚠️ Could not fetch student summary. Details: {escape_markdown_v2(error_msg)}", parse_mode=ParseMode.MARKDOWN_V2)
+    try:
+        # Fetch summary for the single student
+        url = f"{DJANGO_API_URL_FEE}students/{student_id}/fee-summary/" 
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    await query.edit_message_text("⚠️ Could not fetch student summary.")
+                    return
+                # Expecting a list of one or a single dict, handle safely
+                data = await resp.json(content_type=None)
+                s = data[0] if isinstance(data, list) and data else data
+    except Exception:
+        logger.exception(f"Error fetching single student summary for {student_id}")
+        await query.edit_message_text("⚠️ Error fetching student summary.")
         return
 
-    # CRITICAL FIX: The view returns a single dictionary object, not a list.
-    s = data
-    
     if not s or not isinstance(s, dict):
         await query.edit_message_text("🎉 Student summary not found or all fees are paid.")
         return
@@ -476,9 +487,16 @@ app.add_handler(CallbackQueryHandler(handle_back_to_fees, pattern=r"^back_to_stu
 async def setup_menu_button():
     """Sets the persistent 'Open School App' button."""
     try:
+        # The URL for the Web App button. This points to your main dashboard.
         app_url = f"{WEB_APP_BASE_URL}/parents/dashboard/"
+        
+        # 1. Create the WebAppInfo object
         web_app_info = WebAppInfo(url=app_url)
+        
+        # 2. Define the MenuButtonWebApp using the WebAppInfo object
         menu_button = MenuButtonWebApp(text="Open School App", web_app=web_app_info)
+        
+        # Set the menu button for all users.
         await app.bot.set_chat_menu_button(menu_button=menu_button)
         logger.info(f"✅ Menu button set successfully to: {app_url}")
     except Exception as e:
@@ -493,13 +511,21 @@ async def setup_menu_button():
 app_initialized = False
 
 def process_update_sync(update_data: dict):
-    from telegram import Update
     import asyncio
+    from telegram import Update
+    global app_initialized
 
     try:
         update = Update.de_json(update_data, app.bot)
-        loop = asyncio.get_event_loop()
-        loop.create_task(app.process_update(update))
+
+        # Initialize only once
+        if not app_initialized:
+            asyncio.run(app.initialize())
+            app_initialized = True
+
+        # Process the update
+        asyncio.run(app.process_update(update))
+
     except Exception as e:
         logger.exception(f"Error processing Telegram update: {e}")
 
@@ -508,28 +534,58 @@ def process_update_sync(update_data: dict):
 async def setup_webhook():
     """Sets up the Telegram webhook and persistent menu button safely on PythonAnywhere."""
     
+    # --- PythonAnywhere domain & webhook path ---
     DOMAIN = "schoolsys.pythonanywhere.com"
     WEBHOOK_PATH = "/parents/telegram-webhook/"
     WEBHOOK_URL = f"https://{DOMAIN}{WEBHOOK_PATH}"
 
+    # --- Initialize bot properly ---
     await app.initialize()
     bot = app.bot
 
+    # --- Delete old webhook ---
     await bot.delete_webhook()
     logger.info("Old webhook deleted.")
 
+    # --- Set new webhook ---
     await bot.set_webhook(url=WEBHOOK_URL)
     logger.info(f"✅ Webhook set successfully: {WEBHOOK_URL}")
 
+    # --- Set persistent menu button with HTTPS ---
     try:
         await setup_menu_button()
         logger.info("✅ Persistent menu button set successfully.")
     except Exception as e:
         logger.error(f"❌ Failed to set menu button: {e}")
 
-# ----------------------
+
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "show_fees":
+        # Send temporary "loading" message
+        loading_msg = await query.message.reply_text("💰 Fetching your fees...")
+
+        # Call the shared fees function
+        await fees(update, context)
+
+        # Optionally delete the temporary message (for a cleaner chat)
+        try:
+            await loading_msg.delete()
+        except Exception:
+            pass
+
+app.add_handler(CallbackQueryHandler(handle_button))
+        
+        
+# -----
+# -----------------
 # 11. Local polling entry point
 # ----------------------
 if __name__ == "__main__":
+    # If you run this file directly, it will run in polling mode (local development)
     logger.info("🤖 Bot running locally (polling mode)")
+    # NOTE: In local development, you might want to call setup_menu_button() 
+    # explicitly here if you aren't using the webhook entry point.
     app.run_polling()
