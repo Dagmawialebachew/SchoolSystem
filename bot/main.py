@@ -289,18 +289,18 @@ async def handle_disconnect(update: Update, parent_id: str):
                         parse_mode=ParseMode.MARKDOWN_V2
                     )
                 else:
-                try:
-                    error_msg = resp_json.get("error") or f"API responded with status {resp.status}"
-                except Exception:
-                    error_msg = f"API responded with status {resp.status}"
-                
-                # Escape all markdown characters
-                safe_error = escape_markdown_v2(error_msg)
-                
-                await message.reply_text(
-                    f"⚠️ Failed to disconnect\\. Details: {safe_error}",
-                    parse_mode=ParseMode.MARKDOWN_V2
-                )
+                    try:
+                        error_msg = resp_json.get("error") or f"API responded with status {resp.status}"
+                    except Exception:
+                        error_msg = f"API responded with status {resp.status}"
+                    
+                    # Escape all markdown characters
+                    safe_error = escape_markdown_v2(error_msg)
+                    
+                    await message.reply_text(
+                        f"⚠️ Failed to disconnect\\. Details: {safe_error}",
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
 
     except aiohttp.ClientConnectorError as e:
         logger.exception(f"Connection error disconnecting parent {parent_id}: {e}")
